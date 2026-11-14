@@ -13,7 +13,8 @@ const outsideDem = () => toast.warning('Вне модели рельефа', { d
 import { SITE } from '@/store'
 
 // Tiles go through the local Rust cache (tiles/) when it runs, else straight to NASA.
-const TREK = 'https://trek.nasa.gov/tiles/Mars/EQ'
+// In production tiles come through the Vercel CDN cache (api/trek); the dev server has no functions, so it goes to NASA.
+const TREK = import.meta.env.DEV ? 'https://trek.nasa.gov/tiles/Mars/EQ' : '/api/trek'
 const TILE_PROXY = import.meta.env.VITE_TILE_PROXY ?? 'http://127.0.0.1:8787'
 let tileBase = TREK
 const tileBaseReady = fetch(`${TILE_PROXY}/health`, { signal: AbortSignal.timeout(500) })

@@ -11,7 +11,8 @@ import { SLOPE_CLASSES, slopeClass, Terrain } from '@/lib/terrain'
 import { Button } from '@/components/ui/button'
 import { PlayControls } from '@/components/Playback'
 
-const TREK = 'https://trek.nasa.gov/tiles/Mars/EQ'
+// In production tiles come through the Vercel CDN cache (api/trek); the dev server has no functions, so it goes to NASA.
+const TREK = import.meta.env.DEV ? 'https://trek.nasa.gov/tiles/Mars/EQ' : '/api/trek'
 const TILE_PROXY = import.meta.env.VITE_TILE_PROXY ?? 'http://127.0.0.1:8787'
 const CTX = ['JEZ_ctx_B_soc_008_orthoMosaic_6m_Eqc_latTs0_lon0', 13]
 const HIRISE = ['JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first_dd', 17]
