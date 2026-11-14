@@ -6,7 +6,7 @@
 
 Real NASA terrain, imagery and weather in one map: plan a walk, check it against suit limits, replay it.
 
-[**Live demo**](https://marswalk-planner.vercel.app) · [Run locally](#run) · [Data](#data)
+[**Live demo**](https://marswalk-planner-one.vercel.app) · [Run locally](#run) · [Data](#data)
 
 ![React](https://img.shields.io/badge/React_19-20232a?logo=react&logoColor=61dafb)
 ![Vite](https://img.shields.io/badge/Vite-646cff?logo=vite&logoColor=white)
