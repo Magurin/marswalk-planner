@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Sparkles, SendHorizontal, Square, Trash2, Check, Loader2 } from 'lucide-react'
 import { useStore, startOptions } from '@/store'
-import { ask, MODEL } from '@/lib/assistant'
+import { ask } from '@/lib/assistant'
 import { Button } from '@/components/ui/button'
 
 const SUGGEST = [
@@ -91,10 +91,11 @@ export function Assistant() {
             ? <Button size="icon-sm" variant="secondary" onClick={() => controller?.abort()} aria-label="Остановить"><Square /></Button>
             : <Button size="icon-sm" onClick={() => send(text)} disabled={!text.trim() || !ready} aria-label="Отправить"><SendHorizontal /></Button>}
         </div>
-        <div className="mt-1.5 flex items-center justify-between text-[11.5px] text-muted-foreground">
-          <span>{MODEL}, Enter - отправить</span>
-          {chat.msgs.length > 0 && !chat.busy && <button className="flex items-center gap-1 hover:text-foreground" onClick={() => setChat({ msgs: [], prevId: null })}><Trash2 className="size-3" />Новый разговор</button>}
-        </div>
+        {chat.msgs.length > 0 && !chat.busy && (
+          <div className="mt-1.5 flex justify-end text-[11.5px] text-muted-foreground">
+            <button className="flex items-center gap-1 hover:text-foreground" onClick={() => setChat({ msgs: [], prevId: null })}><Trash2 className="size-3" />Новый разговор</button>
+          </div>
+        )}
       </div>
     </div>
   )

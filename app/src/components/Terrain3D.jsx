@@ -3,18 +3,20 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
-import { X, Loader2 } from 'lucide-react'
+import { X, Loader2, Crosshair, Play } from 'lucide-react'
 import { useStore } from '@/store'
-import { sunAt } from '@/lib/marstime'
+import { sunAt, fmtH } from '@/lib/marstime'
 import { sampleAt } from '@/lib/eva'
 import { SLOPE_CLASSES, slopeClass, Terrain } from '@/lib/terrain'
 import { Button } from '@/components/ui/button'
+import { PlayControls } from '@/components/Playback'
 
 const TREK = 'https://trek.nasa.gov/tiles/Mars/EQ'
 const TILE_PROXY = import.meta.env.VITE_TILE_PROXY ?? 'http://127.0.0.1:8787'
 const CTX = ['JEZ_ctx_B_soc_008_orthoMosaic_6m_Eqc_latTs0_lon0', 13]
 const HIRISE = ['JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first_dd', 17]
-const SKINS = [['photo', 'Снимок'], ['slope', 'Уклоны'], ['relief', 'Рельеф']]
+const WALKER_LAYER = 1
+const SKINS =[['photo', 'Снимок'], ['slope', 'Уклоны'], ['relief', 'Рельеф']]
 
 // A tile that has not arrived in `ms` is skipped, so one stuck request cannot hold the whole photo.
 const loadImg = (src, ms = 12000) => new Promise((res) => {
@@ -93,7 +95,8 @@ function label(text, color) {
   g.fillStyle = color; g.strokeStyle = '#fff'; g.lineWidth = 10
   g.beginPath(); g.arc(64, 64, 52, 0, 7); g.fill(); g.stroke()
   g.fillStyle = '#111'; g.font = '700 64px Geist Variable, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 64, 68)
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false }))
+  // No depth write, so the astronaut (drawn in a later pass) is not hidden behind the badges.
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false, depthWrite: false }))
   sp.renderOrder = 10
   return sp
 }
@@ -105,7 +108,7 @@ function caption(text) {
   cv.width = Math.ceil(g.measureText(text).width) + 44; cv.height = 60
   g.fillStyle = 'rgba(15,12,10,.82)'; g.beginPath(); g.roundRect(0, 0, cv.width, cv.height, 16); g.fill()
   g.font = font; g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, cv.width / 2, 32)
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false, sizeAttenuation: false }))
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false, depthWrite: false, sizeAttenuation: false }))
   sp.scale.set(0.03 * (cv.width / cv.height), 0.03, 1); sp.center.set(0.5, 0); sp.renderOrder = 11
   return sp
 }
@@ -132,11 +135,25 @@ function astronaut() {
   add(new THREE.SphereGeometry(0.19, 20, 16), visor, 0, 1.69, 0.08)
   add(new THREE.BoxGeometry(0.44, 0.62, 0.22), dark, 0, 1.22, -0.3)
   add(new THREE.BoxGeometry(0.46, 0.08, 0.24), trim, 0, 1.5, -0.3)
+  // Legs hang from the hips and arms from the shoulders, so they can swing in the walk cycle.
+  const joint = (x, y) => { const j = new THREE.Group(); j.position.set(x, y, 0); g.add(j); return j }
+  const part = (j, geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x - j.position.x, y - j.position.y, z); j.add(m); return m }
+  const legs = [], arms = []
   for (const k of [-1, 1]) {
-    add(new THREE.CapsuleGeometry(0.11, 0.52, 4, 10), suit, 0.14 * k, 0.45, 0)
-    add(new THREE.BoxGeometry(0.2, 0.12, 0.34), dark, 0.14 * k, 0.06, 0.04)
-    add(new THREE.CapsuleGeometry(0.09, 0.46, 4, 10), suit, 0.37 * k, 1.12, 0.03).rotation.z = 0.14 * k
-    add(new THREE.SphereGeometry(0.1, 10, 8), dark, 0.42 * k, 0.8, 0.03)
+    const hip = joint(0.14 * k, 0.84)
+    part(hip, new THREE.CapsuleGeometry(0.11, 0.52, 4, 10), suit, 0.14 * k, 0.45, 0)
+    part(hip, new THREE.BoxGeometry(0.2, 0.12, 0.34), dark, 0.14 * k, 0.06, 0.04)
+    const sh = joint(0.34 * k, 1.42)
+    part(sh, new THREE.CapsuleGeometry(0.09, 0.46, 4, 10), suit, 0.37 * k, 1.12, 0.03).rotation.z = 0.14 * k
+    part(sh, new THREE.SphereGeometry(0.1, 10, 8), dark, 0.42 * k, 0.8, 0.03)
+    legs.push(hip); arms.push(sh)
+  }
+  // Walk cycle: phase in radians, amount 0 (standing) to 1 (full stride).
+  g.userData.pose = (phase, amount) => {
+    const swing = Math.sin(phase) * 0.55 * amount
+    legs[0].rotation.x = swing; legs[1].rotation.x = -swing
+    arms[0].rotation.x = -swing * 0.8; arms[1].rotation.x = swing * 0.8
+    g.position.y = Math.abs(Math.cos(phase)) * 0.07 * amount
   }
   return g
 }
@@ -225,9 +242,11 @@ const loadModel = (url, lengthM, turnY = 0) => gltf.loadAsync(url).then(({ scene
   return { model: out, height: size.y * k }
 })
 
-function Scene({ exag, skin, focusReq, onStatus, onInfo }) {
+function Scene({ exag, skin, focusReq, follow, onStatus, onInfo }) {
   const host = useRef(null)
   const api = useRef(null)
+  const followRef = useRef(follow)
+  followRef.current = follow
 
   // Build once per open: terrain mesh, route and markers. Exaggeration and skin are applied in place below.
   useEffect(() => {
@@ -280,7 +299,9 @@ function Scene({ exag, skin, focusReq, onStatus, onInfo }) {
     const sunDir = new THREE.Vector3(sun.e, Math.max(0.15, sun.u), -sun.n).normalize()
     const light = new THREE.DirectionalLight('#fff4e6', 2.2 * day)
     light.position.copy(sunDir).multiplyScalar(1000)
-    scene.add(light, new THREE.AmbientLight('#ffe8d6', 1.1 * day))
+    const ambient = new THREE.AmbientLight('#ffe8d6', 1.1 * day)
+    light.layers.enable(WALKER_LAYER); ambient.layers.enable(WALKER_LAYER)
+    scene.add(light, ambient)
     // Reflections for the metal parts of the rover; the ground ignores them (envMapIntensity 0).
     const pmrem = new THREE.PMREMGenerator(renderer), envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
     scene.environment = envTex; scene.environmentIntensity = 0.55 * day
@@ -346,7 +367,11 @@ function Scene({ exag, skin, focusReq, onStatus, onInfo }) {
 
     const walker = addProp({ model: astronaut(), size: 1.9, frac: 0.03, lon: base.lon, lat: base.lat, tilt: false })
     walker.holder.visible = false
-    const focusOn = { base: addProp({ model: habitat(), size: 6, shadow: 17, frac: 0.024, lon: base.lon, lat: base.lat, tilt: false, yaw: 180 }) }
+    // The astronaut lives on its own layer and is drawn after everything else (see the render loop),
+    // so stop badges never cover it while the ground still does.
+    walker.holder.traverse((o) => o.layers.set(WALKER_LAYER))
+    let stride = 0, phase = 0, lastT = performance.now()
+    const focusOn = { walker, base: addProp({ model: habitat(), size: 6, shadow: 17, frac: 0.024, lon: base.lon, lat: base.lat, tilt: false, yaw: 180 }) }
 
     // Perseverance stands on its latest known position inside the scene: today's, if the scene reaches it,
     // otherwise the last place here that it drove through. Ingenuity sits on its latest landing spot inside the scene.
@@ -430,7 +455,7 @@ function Scene({ exag, skin, focusReq, onStatus, onInfo }) {
     renderer.domElement.addEventListener('pointerdown', stopFly)
     renderer.domElement.addEventListener('wheel', stopFly, { passive: true })
 
-    let raf = 0
+    let raf = 0, tracking = null
     const loop = () => {
       raf = requestAnimationFrame(loop)
       const st = useStore.getState()
@@ -440,6 +465,22 @@ function Scene({ exag, skin, focusReq, onStatus, onInfo }) {
         if (dx * dx + dy * dy > 1e-12) walker.yaw = (Math.atan2(dx, dy) * 180) / Math.PI
         walker.lon = p.lon; walker.lat = p.lat; walker.holder.visible = true; place(walker)
       } else walker.holder.visible = false
+      // Follow mode: fly to the astronaut once when the replay starts, then carry the camera along with it,
+      // so the view can still be orbited and zoomed around the walker.
+      if (followRef.current && walker.holder.visible) {
+        const wp = walker.holder.position
+        if (!tracking) { tracking = wp.clone(); focus('walker') }
+        else {
+          const d = wp.clone().sub(tracking); tracking.copy(wp)
+          camera.position.add(d); controls.target.add(d)
+          if (fly) { fly.p1.add(d); fly.g1.add(d) }
+        }
+      } else tracking = null
+      // Stride eases in while the replay runs and out when it pauses; about 1.6 steps a second.
+      const tNow = performance.now(), dt = Math.min(0.1, (tNow - lastT) / 1000); lastT = tNow
+      stride += ((st.play.playing ? 1 : 0) - stride) * Math.min(1, dt * 6)
+      phase += dt * Math.PI * 1.6 * stride
+      walker.model.userData.pose(phase, stride)
       if (fly) {
         const k = Math.min(1, (performance.now() - fly.t0) / 1100), q = k * k * (3 - 2 * k)
         camera.position.lerpVectors(fly.p0, fly.p1, q); controls.target.lerpVectors(fly.g0, fly.g1, q)
@@ -450,7 +491,9 @@ function Scene({ exag, skin, focusReq, onStatus, onInfo }) {
         if (p.label) { p.label.visible = p.holder.visible; p.label.position.copy(p.holder.position); p.label.position.y += p.h * 1.25 }
       }
       sky.position.copy(camera.position); sky.scale.setScalar(camera.far * 0.5)
-      renderer.render(scene, camera)
+      camera.layers.set(0); renderer.autoClear = true; renderer.render(scene, camera)
+      camera.layers.set(WALKER_LAYER); renderer.autoClear = false; renderer.render(scene, camera)
+      camera.layers.set(0)
     }
     loop()
     const ro = new ResizeObserver(() => { renderer.setSize(el.clientWidth, el.clientHeight); camera.aspect = el.clientWidth / el.clientHeight; camera.updateProjectionMatrix() })
@@ -512,6 +555,7 @@ export default function Terrain3D() {
   const [status, setStatus] = useState(null)
   const [info, setInfo] = useState(null)
   const [focusReq, setFocusReq] = useState(null)
+  const [follow, setFollow] = useState(true)
   const cam = [['route', 'Маршрут'], ['base', 'База'], ...(info?.roverReady ? [['rover', 'Perseverance']] : []), ...(info?.heliReady ? [['heli', 'Ingenuity']] : [])]
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') setView3d(false) }
@@ -525,7 +569,7 @@ export default function Terrain3D() {
   )
   return (
     <div className="fixed inset-0 z-[2500] bg-black" role="dialog" aria-label="3D-вид маршрута">
-      <Scene exag={exag} skin={skin} focusReq={focusReq} onStatus={setStatus} onInfo={setInfo} />
+      <Scene exag={exag} skin={skin} focusReq={focusReq} follow={follow} onStatus={setStatus} onInfo={setInfo} />
       <div className="panel absolute top-3 left-3 flex flex-wrap items-center gap-3 px-3 py-2">
         <div className="text-[14px] font-semibold">3D-вид маршрута</div>
         {seg(SKINS, skin, setSkin)}
@@ -538,6 +582,38 @@ export default function Terrain3D() {
         {status && <span className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">{status.endsWith('...') && <Loader2 className="size-3.5 animate-spin" />}{status}</span>}
       </div>
       <Button className="absolute top-3 right-3" onClick={() => setView3d(false)}><X />Закрыть</Button>
+      <PlayBar follow={follow} setFollow={setFollow} />
+    </div>
+  )
+}
+
+const hm = (s) => { const m = Math.round(s / 60); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` }
+
+// Route replay inside the 3D view: start, pause, speed, scrub, and whether the camera follows the astronaut.
+function PlayBar({ follow, setFollow }) {
+  const R = useStore((s) => s.result)
+  const t = useStore((s) => s.play.t)
+  const stops = useStore((s) => s.stops)
+  const setPlay = useStore((s) => s.setPlay)
+  if (!R) return null
+  const end = R.hours * 3600
+  const s = t != null ? sampleAt(R, t) : null
+  const status = !s ? 'астронавт на базе' : s.working ? `работа: ${stops[s.leg]?.name ?? `точка ${s.leg + 1}`}` : s.leg < stops.length ? `идёт к точке ${s.leg + 1}` : 'возвращается на базу'
+  return (
+    <div className="panel absolute bottom-4 left-1/2 flex w-[min(640px,calc(100%-24px))] -translate-x-1/2 flex-col gap-2 px-3 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <div className="flex items-center gap-2">
+          {t == null
+            ? <Button size="sm" onClick={() => setPlay({ t: 0, playing: true })}><Play />Запустить маршрут</Button>
+            : <PlayControls compact />}
+        </div>
+        <div className="min-w-0 text-[13px]">
+          {s && <span className="font-semibold tabular">{fmtH(s.ltst)} </span>}
+          <span className="text-muted-foreground">{status}{t != null && <span className="tabular"> · {hm(t)} из {hm(end)}</span>}</span>
+        </div>
+        <button onClick={() => setFollow(!follow)} title="Камера следует за астронавтом" className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px] ${follow ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}><Crosshair className="size-3.5" />Следить</button>
+      </div>
+      {t != null && <input type="range" min={0} max={end} step={1} value={t} onChange={(e) => setPlay({ t: +e.target.value, playing: false })} className="w-full accent-[var(--primary)]" aria-label="Момент выхода" />}
     </div>
   )
 }
