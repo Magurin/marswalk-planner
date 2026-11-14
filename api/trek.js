@@ -8,7 +8,10 @@ const TILE = /^\/[A-Za-z0-9_.-]+\/1\.0\.0\/default\/default028mm\/\d{1,2}\/\d{1,
 export default {
   async fetch(req) {
     if (req.method !== 'GET' && req.method !== 'HEAD') return new Response('Method not allowed', { status: 405 })
-    const path = new URL(req.url).pathname.replace(/^\/api\/trek/, '')
+    // vercel.json rewrites /api/trek/<tile> to /api/trek?p=<tile>; the pathname form is kept for direct calls.
+    const url = new URL(req.url)
+    const p = url.searchParams.get('p')
+    const path = p != null ? '/' + p.replace(/^\/+/, '') : url.pathname.replace(/^\/api\/trek/, '')
     if (!TILE.test(path)) return new Response('Not a tile path', { status: 400 })
     const r = await fetch(UPSTREAM + path).catch(() => null)
     if (!r) return new Response('Upstream unreachable', { status: 502, headers: { 'Cache-Control': 'no-store' } })

@@ -3,5 +3,11 @@
   "framework": null,
   "installCommand": "npm ci --prefix app",
   "buildCommand": "npm run build --prefix app",
-  "outputDirectory": "app/dist"
+  "outputDirectory": "app/dist",
+  "rewrites": [
+    {
+      "source": "/api/trek/:path*",
+      "destination": "/api/trek?p=:path*"
+    }
+  ]
 }
