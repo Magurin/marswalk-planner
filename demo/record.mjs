@@ -28,6 +28,9 @@ const STOPS = [
 ]
 const VOICE = process.env.VOICE || 'onyx'
 const TOTAL = 30
+// Space Apps asks for AI-generated audio to be acknowledged in the file metadata as well as in text.
+const AI_NOTE = 'Screen recording of Marswalk Planner. The English voiceover is AI-generated (OpenAI gpt-4o-mini-tts, voice onyx); the footage is not.'
+const AI_META = ['-metadata', 'title=Marswalk Planner demo', '-metadata', `comment=${AI_NOTE}`, '-metadata', `description=${AI_NOTE}`, '-metadata:s:a:0', 'title=AI-generated voiceover (OpenAI gpt-4o-mini-tts)']
 // Each shot lasts from the start of its voiceover line to the start of the next one; the last runs to TOTAL.
 const LINES = JSON.parse(readFileSync(path.join(HERE, 'audio', `timings_${VOICE}.json`), 'utf8'))
 const CUT = LINES.map((l, i) => +((i + 1 < LINES.length ? LINES[i + 1].start : TOTAL) - (i ? l.start : 0)).toFixed(3))
@@ -146,7 +149,7 @@ async function main() {
     '-vf', `scale=${W}:${H},format=yuv420p,fade=t=in:st=0:d=0.4,fade=t=out:st=${total - 0.6}:d=0.6`,
     '-af', `apad,afade=t=out:st=${total - 0.6}:d=0.6`,
     '-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-r', String(FPS),
-    '-c:a', 'aac', '-b:a', '192k', '-t', String(total), '-movflags', '+faststart', mp4], { stdio: ['pipe', 'inherit', 'inherit'] })
+    '-c:a', 'aac', '-b:a', '192k', '-t', String(total), ...AI_META, '-movflags', '+faststart', mp4], { stdio: ['pipe', 'inherit', 'inherit'] })
   for (const jpg of out) if (!ff.stdin.write(jpg)) await new Promise((r) => ff.stdin.once('drain', r))
   ff.stdin.end()
   await new Promise((r, j) => ff.on('close', (c) => (c ? j(new Error(`ffmpeg exited ${c}`)) : r())))

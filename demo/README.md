@@ -4,6 +4,7 @@ One story: pick targets - get a route and a verdict - see where you can reach - 
 
 - **Video:** `out/marswalk-demo.mp4`, 30 s, 1920x1080, made by [`record.mjs`](record.mjs). Not in git: rebuild it with the steps below.
 - **Voiceover:** [`audio/voiceover_onyx.wav`](audio/voiceover_onyx.wav), made by [`voiceover.py`](voiceover.py). The video is cut to the voice, not the other way round.
+- **AI disclosure:** the voiceover is AI-generated speech (OpenAI `gpt-4o-mini-tts`, voice `onyx`); the footage is a plain screen recording of the app. The recorder writes this note into the MP4 metadata (`title`, `comment`, `description` and the audio track title), as Space Apps requires for AI audio.
 
 ## Storyboard
 

@@ -299,7 +299,7 @@ Declared per the Space Apps rules on AI attribution.
 | --- | --- | --- |
 | **Claude Code** (models Claude Opus 5.5 and Claude Fable 5.2) | Anthropic | Coding assistant during development: writing and refactoring code, debugging, performance profiling and optimization, the demo recorder script, this README and the English translation of the UI |
 | **GPT-5.4 mini** via the OpenAI Responses API | OpenAI | Runtime feature: the in-app AI assistant that edits the EVA plan through the same actions as the UI (`app/src/lib/assistant.js`) |
-| **gpt-4o-mini-tts** (voice `onyx`) via the OpenAI Audio API | OpenAI | English voiceover of the 30-second demo video (`demo/voiceover.py`) |
+| **gpt-4o-mini-tts** (voice `onyx`) via the OpenAI Audio API | OpenAI | English voiceover of the 30-second demo video (`demo/voiceover.py`). The video file carries this note in its metadata; the footage itself is a screen recording, not generated |
 
 No data in the project comes from AI. Terrain, imagery, the rover track, science target positions and weather are real NASA and USGS data (see [Data](#data)); the EVA model formulas come from the published sources cited in [How it is computed](#how-it-is-computed). The AI assistant only changes the plan through the regular store actions, and every change goes through the same EVA checks as a manual edit.
 
