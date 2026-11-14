@@ -144,6 +144,7 @@
 .mk-label.main { pointer-events: auto; cursor: pointer; }
 .mk-label.main i { width: 14px; height: 14px; margin-left: -2px; background: var(--primary); box-shadow: 0 0 0 3px #fff, 0 0 18px var(--primary); animation: pulse-ring 2s ease-out infinite; }
 .mk-label.main b { font-size: 15px; }
+@keyframes beam-spin { to { transform: rotate(360deg); } }
 @keyframes pulse-ring { 0% { box-shadow: 0 0 0 3px #fff, 0 0 0 3px color-mix(in oklch, var(--primary) 70%, transparent); } 100% { box-shadow: 0 0 0 3px #fff, 0 0 0 16px transparent; } }
 /* At planet scale the plan markers would pile up on Jezero: show only the place labels. */
 .zoomed-out .leaflet-marker-icon:not(:has(.mk-label)), .zoomed-out .leaflet-overlay-pane { display: none; }.leaflet-popup-content .photos { margin-top: 8px; }

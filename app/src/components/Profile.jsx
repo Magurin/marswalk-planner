@@ -9,10 +9,10 @@ import { PlayControls } from '@/components/Playback'
 export function Profile() {
   const R = useStore((s) => s.result)
   const setHover = useStore((s) => s.setHover)
-  const playT = useStore((s) => s.play.t)
   const setPlay = useStore((s) => s.setPlay)
   const ref = useRef(null)
   const geom = useRef(null)
+  const head = useRef(null)
   const [info, setInfo] = useState(null)
   const [size, setSize] = useState(0)
   // Horizontal scale of the drawn chart, for the replay playhead.
@@ -85,6 +85,19 @@ export function Profile() {
     setPlot({ l: m.l, span: w - m.l - m.r, dist: R.dist })
   }, [R, size])
 
+  // The replay playhead is moved directly in the DOM: going through React would re-render the chart's component every frame.
+  useEffect(() => {
+    const place = (s) => {
+      const el = head.current, t = s.play.t
+      if (!el) return
+      if (t == null || !s.result || !plot) { el.style.display = 'none'; return }
+      el.style.display = ''
+      el.style.transform = `translateX(${plot.l + (sampleAt(s.result, t).d / plot.dist) * plot.span}px)`
+    }
+    place(useStore.getState())
+    return useStore.subscribe((s, prev) => { if (s.play !== prev.play || s.result !== prev.result) place(s) })
+  }, [plot])
+
   const move = (e) => {
     const G = geom.current
     if (!G) return
@@ -113,9 +126,7 @@ export function Profile() {
       <div className="relative min-h-0 flex-1">
         <canvas ref={ref} className="absolute inset-0 h-full w-full cursor-pointer" onMouseMove={move} onMouseLeave={leave} title="Нажмите, чтобы проиграть выход с этого места"
           onClick={() => { if (info) setPlay({ t: info.s.t, playing: false }) }} />
-        {playT != null && R && plot && (
-          <div className="pointer-events-none absolute top-5 bottom-6 w-0.5 bg-[#fb7185] shadow-[0_0_8px_#fb7185]" style={{ left: plot.l + (sampleAt(R, playT).d / plot.dist) * plot.span }} />
-        )}
+        <div ref={head} className="pointer-events-none absolute top-5 bottom-6 left-0 w-0.5 bg-[#fb7185] shadow-[0_0_8px_#fb7185]" style={{ display: 'none' }} />
         {!R && <div className="absolute inset-0 grid place-items-center text-[14px] text-muted-foreground">Профиль появится, когда в плане будет хотя бы одна точка.</div>}
         {info && (
           <>

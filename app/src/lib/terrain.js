@@ -191,6 +191,37 @@ export class Terrain {
     return v === 0 ? null : v === 1;
   }
 
+  // Connected areas of ground that can be walked (slope within the limit, elevation known): a label above zero per cell.
+  // A path can only join two cells with the same label. The start and the goal themselves may be steeper, see route().
+  // Kept for the last slope limit asked for; a full pass over the grid takes about a tenth of a second.
+  walkable(maxSlope) {
+    if (this._comp?.maxSlope === maxSlope) return this._comp.labels;
+    const { W, H, z, slope } = this, n = W * H;
+    const labels = new Int32Array(n), stack = new Int32Array(n);
+    const open = (i) => labels[i] === 0 && z[i] === z[i] && slope[i] <= maxSlope;
+    let next = 0;
+    for (let s = 0; s < n; s++) {
+      if (!open(s)) continue;
+      let top = 0;
+      labels[s] = ++next; stack[top++] = s;
+      while (top) {
+        const i = stack[--top], c = i % W, r = (i / W) | 0;
+        for (let dr = -1; dr <= 1; dr++) {
+          const r2 = r + dr;
+          if (r2 < 0 || r2 >= H) continue;
+          for (let dc = -1; dc <= 1; dc++) {
+            const c2 = c + dc;
+            if (c2 < 0 || c2 >= W) continue;
+            const j = r2 * W + c2;
+            if (open(j)) { labels[j] = next; stack[top++] = j; }
+          }
+        }
+      }
+    }
+    this._comp = { maxSlope, labels };
+    return labels;
+  }
+
   // Least-time path between two [lon, lat] points with A* on the 20 m grid.
   // speed(grade) gives m/s for a signed grade (rise over run); cells steeper than maxSlope are closed.
   route(a, b, { speed, vmax, maxSlope = 20, hazard = 1.5, limit = 900000 }) {
@@ -201,6 +232,23 @@ export class Terrain {
     if (!ok(ca, ra) || !ok(cb, rb)) return null;
     const start = ra * W + ca, goal = rb * W + cb;
     if (start === goal) return [a, b];
+    // No way through at all (a stop on the floor of a small crater ringed by steep walls): answer at once.
+    // Without this the search would visit every cell it can reach, the better part of a second, before giving up.
+    // The labels are prepared in idle time (see the store); until they are ready the search simply runs as before.
+    const comp = this._comp?.maxSlope === maxSlope ? this._comp.labels : null;
+    if (comp) {
+      const near = (i) => {
+        const out = [];
+        if (comp[i] > 0) out.push(comp[i]);
+        else for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+          const c = (i % W) + dc, r = ((i / W) | 0) + dr;
+          if (ok(c, r) && comp[r * W + c] > 0) out.push(comp[r * W + c]);
+        }
+        return out;
+      };
+      const cs = near(start), cg = near(goal);
+      if (!cs.some((k) => cg.includes(k))) return null;
+    }
     const g = (this._g ||= new Float32Array(W * H)); g.fill(Infinity);
     const from = (this._from ||= new Int32Array(W * H));
     const closed = (this._closed ||= new Uint8Array(W * H)); closed.fill(0);
@@ -282,7 +330,7 @@ export function shadePixels(grid, sun, px) {
 }
 
 // Douglas-Peucker in local metres
-function simplify(pts, tol) {
+export function simplify(pts, tol) {
   if (pts.length < 3) return pts;
   const k = Math.cos(pts[0][1] * D2R) * M_PER_DEG;
   const X = pts.map((p) => [p[0] * k, p[1] * M_PER_DEG]);

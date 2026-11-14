@@ -14,10 +14,9 @@ const TEXT = { go: 'text-go', caution: 'text-caution', nogo: 'text-nogo' }
 export function PlanActions() {
   const R = useStore((s) => s.result)
   const { setPlay, setView3d, setBriefing, shareLink } = useStore.getState()
-  const play = useStore((s) => s.play)
   return (
     <div className="grid grid-cols-4 gap-1.5 [&>button]:h-auto [&>button]:flex-col [&>button]:gap-1 [&>button]:py-2 [&>button]:text-[12px]">
-      <Button variant="secondary" disabled={!R} onClick={() => setPlay({ t: play.t == null || play.t >= R.hours * 3600 ? 0 : play.t, playing: true })}><Play />Проиграть</Button>
+      <Button variant="secondary" disabled={!R} onClick={() => { const t = useStore.getState().play.t; setPlay({ t: t == null || t >= R.hours * 3600 ? 0 : t, playing: true }) }}><Play />Проиграть</Button>
       <Button variant="secondary" onClick={() => setView3d(true)}><Box />3D-вид</Button>
       <Button variant="secondary" disabled={!R} onClick={() => setBriefing(true)}><FileText />Брифинг</Button>
       <Button variant="secondary" onClick={shareLink}><Link2 />Ссылка</Button>

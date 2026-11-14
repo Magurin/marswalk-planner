@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import { toast } from 'sonner'
 import { useStore } from '@/store'
-import { M_PER_DEG, SLOPE_CLASSES, slopeClass, Terrain } from '@/lib/terrain'
+import { M_PER_DEG, SLOPE_CLASSES, slopeClass, Terrain, simplify } from '@/lib/terrain'
 import { sunAt } from '@/lib/marstime'
 import { LAYERS, LANDMARKS } from '@/lib/catalog'
 import { fx } from '@/lib/fmt'
@@ -172,9 +172,17 @@ export function MapView() {
     }
 
     // ----- vectors -----
+    // The traverse comes in centimetre steps, 36 thousand points, and it is drawn twice (casing and line).
+    // Leaflet re-projects and clips every point of a line on each zoom and at the end of each pan,
+    // so the track is thinned to 1.5 m once: at the deepest zoom that is still a couple of pixels.
+    const thinned = new WeakMap()
+    const trackLines = (traverse) => {
+      if (!thinned.has(traverse)) thinned.set(traverse, traverse.map((t) => simplify(t.c, 1.5).map((c) => [c[1], c[0]])))
+      return thinned.get(traverse)
+    }
     const drawTrack = (s) => {
       const g = groups.track; g.clearLayers()
-      const lines = s.m20.traverse.map((t) => t.c.map((c) => [c[1], c[0]]))
+      const lines = trackLines(s.m20.traverse)
       L.polyline(lines, { color: '#000', weight: 6, opacity: 0.55, interactive: false }).addTo(g)
       L.polyline(lines, { color: '#7dd3fc', weight: 2.5, interactive: false }).addTo(g)
       const last = s.m20.waypoints.at(-1)
@@ -257,6 +265,8 @@ export function MapView() {
     const drawPlay = (s) => {
       const R = s.result, t = s.play.t
       if (!R || t == null) { playLayer.clearLayers(); homeAt = null; return }
+      // Under the 3D view the map cannot be seen: no marker moves and no way-home searches until it closes.
+      if (s.view3d) return
       const p = sampleAt(R, t)
       walker.setLatLng([p.lat, p.lon]); if (!playLayer.hasLayer(walker)) walker.addTo(playLayer)
       // The return route is an A* search: at most a few per second while the replay runs.
@@ -264,7 +274,7 @@ export function MapView() {
       homeTimer = setTimeout(() => {
         homeTimer = 0
         const st = store.getState(), R2 = st.result, t2 = st.play.t
-        if (!R2 || t2 == null || !st.base) return
+        if (!R2 || t2 == null || !st.base || st.view3d) return
         const q = sampleAt(R2, t2), key = [q.lon.toFixed(5), q.lat.toFixed(5), st.base.lon, st.base.lat, st.params.maxSlopeDeg].join()
         if (key === homeAt) return
         homeAt = key
@@ -333,7 +343,7 @@ export function MapView() {
       if (first || s.layers !== prev.layers || s.viewshed !== prev.viewshed || s.sunLTST !== prev.sunLTST || s.reach !== prev.reach || s.params !== prev.params) syncLayers(s)
       if (first || s.result !== prev.result) drawAbort(s)
       if (first || s.ghost !== prev.ghost || s.variants !== prev.variants) drawGhost(s)
-      if (first || s.play !== prev.play || s.result !== prev.result) drawPlay(s)
+      if (first || s.play !== prev.play || s.result !== prev.result || s.view3d !== prev.view3d) drawPlay(s)
       if (!first && s.hover !== prev.hover) {
         if (s.hover) hoverMk.setLatLng([s.hover.lat, s.hover.lon]).addTo(map)
         else map.removeLayer(hoverMk)

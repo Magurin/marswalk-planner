@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Play, Pause, Square, Wind, Clock, Footprints, Home, Radio, Moon, Hammer } from 'lucide-react'
-import { useStore } from '@/store'
+import { useStore, usePlayT } from '@/store'
 import { sampleAt, O2_KG_PER_J } from '@/lib/eva'
 import { reachAt } from '@/lib/reach'
 import { fmtH } from '@/lib/marstime'
@@ -32,14 +32,18 @@ export function PlayDriver() {
 }
 
 export function PlayControls({ compact = false }) {
-  const R = useStore((s) => s.result)
-  const play = useStore((s) => s.play)
+  const hasRoute = useStore((s) => !!s.result)
+  // Only what the buttons show: subscribing to the whole replay state would re-render them on every frame.
+  const playing = useStore((s) => s.play.playing)
+  const active = useStore((s) => s.play.t != null)
+  const speed = useStore((s) => s.play.speed)
   const setPlay = useStore((s) => s.setPlay)
-  if (!R) return null
-  const end = R.hours * 3600
+  if (!hasRoute) return null
+  const play = { playing, speed, t: active ? 0 : null }
   const toggle = () => {
-    if (play.playing) return setPlay({ playing: false })
-    setPlay({ t: play.t == null || play.t >= end ? 0 : play.t, playing: true })
+    const s = useStore.getState(), t = s.play.t
+    if (s.play.playing) return setPlay({ playing: false })
+    setPlay({ t: t == null || t >= s.result.hours * 3600 ? 0 : t, playing: true })
   }
   const btn = 'grid size-7 place-items-center rounded-md hover:bg-accent [&_svg]:size-4'
   return (
@@ -66,7 +70,7 @@ const Item = ({ icon: Icon, label, children, tone = '' }) => (
 // Status card over the map while the replay is on: where the walker is, what is left, and the cost of turning back now.
 export function PlayHud() {
   const R = useStore((s) => s.result)
-  const t = useStore((s) => s.play.t)
+  const t = usePlayT()
   const reach = useStore((s) => s.reach)
   const terrain = useStore((s) => s.terrain)
   const p = useStore((s) => s.params)

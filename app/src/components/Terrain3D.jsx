@@ -3,8 +3,9 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { X, Loader2, Crosshair, Play } from 'lucide-react'
-import { useStore } from '@/store'
+import { useStore, usePlayT } from '@/store'
 import { sunAt, fmtH } from '@/lib/marstime'
 import { sampleAt } from '@/lib/eva'
 import { SLOPE_CLASSES, slopeClass, Terrain } from '@/lib/terrain'
@@ -125,6 +126,40 @@ function blobShadow(radius) {
   return m
 }
 
+// One mesh per material instead of one per part: a model costs a few dozen draw calls instead of hundreds.
+// Part transforms are baked into the vertices. A model it cannot merge safely is returned as it was.
+function mergeByMaterial(root) {
+  root.updateMatrixWorld(true)
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), m = new THREE.Matrix4(), groups = new Map()
+  let ok = true
+  root.traverse((o) => {
+    if (!o.isMesh || !ok) return
+    if (Array.isArray(o.material) || o.isSkinnedMesh || o.geometry.morphAttributes.position) { ok = false; return }
+    m.multiplyMatrices(inv, o.matrixWorld)
+    const g = o.geometry.clone().applyMatrix4(m)
+    // A mirrored part would come out inside out: turn its triangles back.
+    if (m.determinant() < 0) {
+      if (!g.index) g.setIndex([...Array(g.attributes.position.count).keys()])
+      const ix = g.index.array
+      for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t }
+    }
+    const key = `${o.material.uuid}|${Object.keys(g.attributes).sort()}|${!!g.index}`
+    if (!groups.has(key)) groups.set(key, { mat: o.material, list: [] })
+    groups.get(key).list.push(g)
+  })
+  const out = new THREE.Group()
+  if (ok) for (const { mat, list } of groups.values()) {
+    const g = list.length > 1 ? mergeGeometries(list, false) : list[0]
+    if (!g) { ok = false; break }
+    out.add(new THREE.Mesh(g, mat))
+  }
+  for (const { list } of groups.values()) if (!ok || list.length > 1) list.forEach((g) => g.dispose())
+  if (!ok) { out.traverse((o) => o.geometry?.dispose()); return root }
+  root.traverse((o) => { if (o.isMesh) o.geometry.dispose() })
+  out.position.copy(root.position); out.quaternion.copy(root.quaternion); out.scale.copy(root.scale)
+  return out
+}
+
 // The astronaut on the walk, 1.9 m tall, facing +Z.
 function astronaut() {
   const g = new THREE.Group()
@@ -229,12 +264,13 @@ function habitat() {
   const dish = add(new THREE.SphereGeometry(2.4, 24, 8, 0, Math.PI * 2, 0, 0.75), std('#e6e6e2', { side: THREE.DoubleSide, roughness: 0.5 }), 11.5, 5.0, -6, 2.3, 0, 0.4)
   dish.scale.setScalar(0.8)
   add(cyl(0.03, 0.03, 1.5, 6), dark, 11.5, 3.3, -6, 2.3 - Math.PI, 0, 0.4)
-  return g
+  return mergeByMaterial(g)
 }
 
 // NASA's own models, brought to real size in metres, standing on y = 0, centred, facing +Z.
 const gltf = new GLTFLoader()
-const loadModel = (url, lengthM, turnY = 0) => gltf.loadAsync(url).then(({ scene: m }) => {
+const loadModel = (url, lengthM, turnY = 0) => gltf.loadAsync(url).then(({ scene }) => {
+  const m = mergeByMaterial(scene)
   const b = new THREE.Box3().setFromObject(m), size = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3())
   const k = lengthM / Math.max(size.x, size.z)
   m.position.set(-c.x * k, -b.min.y * k, -c.z * k); m.scale.multiplyScalar(k)
@@ -277,8 +313,16 @@ function Scene({ exag, skin, focusReq, follow, onStatus, onInfo }) {
     const zMid = zSum / zN
     for (let k = 0; k < heights.length; k++) if (!(heights[k] === heights[k])) heights[k] = zMid
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true })
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio))
+    // Multisampling is the costliest part of a frame on integrated graphics: it is kept for screens up to full HD
+    // and dropped on larger or denser ones, where there are more pixels to smooth the edges anyway.
+    // No logarithmic depth buffer either (it writes depth per pixel and so switches off early depth rejection);
+    // the near plane follows the camera distance instead, see the loop.
+    const fullRatio = Math.min(2, window.devicePixelRatio)
+    const renderer = new THREE.WebGLRenderer({ antialias: fullRatio < 1.5 && el.clientWidth * el.clientHeight <= 2.3e6, powerPreference: 'high-performance' })
+    renderer.setPixelRatio(fullRatio)
+    // Frames are drawn only when something changed (see the loop): `dirty` counts the frames still owed.
+    let dirty = 3, photo = null // photo: null | 'loading' | 'done'
+    const invalidate = (n = 2) => { if (dirty < n) dirty = n }
     renderer.setSize(el.clientWidth, el.clientHeight)
     renderer.outputColorSpace = THREE.SRGBColorSpace
     el.appendChild(renderer.domElement)
@@ -362,7 +406,7 @@ function Scene({ exag, skin, focusReq, follow, onStatus, onInfo }) {
       const p = { yaw: 0, tilt: true, ...o, holder, label: o.text ? caption(o.text) : null }
       p.h = Math.max(o.size, span * o.frac); holder.scale.setScalar(p.h / o.size)
       scene.add(holder); if (p.label) scene.add(p.label)
-      props.push(p); place(p)
+      props.push(p); place(p); invalidate()
       return p
     }
 
@@ -404,24 +448,46 @@ function Scene({ exag, skin, focusReq, follow, onStatus, onInfo }) {
       skirtGeo.attributes.position.needsUpdate = true; skirtGeo.computeVertexNormals(); skirtGeo.computeBoundingSphere()
       wipe(routeGroup); wipe(marks); wipe(trackGroup)
       // The path Perseverance drove, as on the map.
+      // All of it is one object (pairs of points), not one per drive.
+      const tp = []
       for (const t of m20.traverse) {
-        let run = []
-        const flush = () => { if (run.length > 1) trackGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(run), new THREE.LineBasicMaterial({ color: '#7dd3fc' }))); run = [] }
-        for (const [lon, lat] of t.c) { if (inBox(lon, lat)) run.push(new THREE.Vector3(X(lon), groundY(lon, lat) + 2 + ex, Z(lat))); else flush() }
-        flush()
+        let prev = null
+        for (const [lon, lat] of t.c) {
+          const cur = inBox(lon, lat) ? [X(lon), groundY(lon, lat) + 2 + ex, Z(lat)] : null
+          if (prev && cur) tp.push(prev[0], prev[1], prev[2], cur[0], cur[1], cur[2])
+          prev = cur
+        }
       }
+      if (tp.length) trackGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(tp, 3)), new THREE.LineBasicMaterial({ color: '#7dd3fc' })))
       props.forEach(place)
       const lift = 4 + 2 * ex, r = Math.max(4, spanX / 500)
       if (R) {
-        const S = R.samples.filter((p) => p.z === p.z)
+        // The whole tube is one mesh with a colour per vertex: a six-sided piece for every 20 m step of the route.
+        const S = R.samples.filter((p) => p.z === p.z), SIDES = 6
+        const pos = [], col = [], idx = []
+        const pa = new THREE.Vector3(), pb = new THREE.Vector3(), dir = new THREE.Vector3(), u = new THREE.Vector3(), v = new THREE.Vector3()
+        const palette = SLOPE_CLASSES.map((k) => new THREE.Color().setRGB(k.color[0] / 255, k.color[1] / 255, k.color[2] / 255, THREE.SRGBColorSpace))
         for (let k = 1; k < S.length; k++) {
           const a = S[k - 1], b = S[k]
-          const pa = new THREE.Vector3(X(a.lon), yOf(a.z) + lift, Z(a.lat)), pb = new THREE.Vector3(X(b.lon), yOf(b.z) + lift, Z(b.lat))
-          const len = pa.distanceTo(pb); if (len < 0.01) continue
-          const seg = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 6, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color(`rgb(${SLOPE_CLASSES[Math.max(0, slopeClass(b.slope))].color})`) }))
-          seg.position.copy(pa).add(pb).multiplyScalar(0.5)
-          seg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pb.clone().sub(pa).normalize())
-          routeGroup.add(seg)
+          pa.set(X(a.lon), yOf(a.z) + lift, Z(a.lat)); pb.set(X(b.lon), yOf(b.z) + lift, Z(b.lat))
+          if (dir.subVectors(pb, pa).length() < 0.01) continue
+          dir.normalize()
+          u.set(0, 1, 0); if (Math.abs(dir.y) > 0.99) u.set(1, 0, 0)
+          u.cross(dir).normalize(); v.crossVectors(dir, u)
+          const c = palette[Math.max(0, slopeClass(b.slope))], o = pos.length / 3
+          for (let i = 0; i < SIDES; i++) {
+            const ang = (i / SIDES) * Math.PI * 2, cs = Math.cos(ang) * r, sn = Math.sin(ang) * r
+            const ox = u.x * cs + v.x * sn, oy = u.y * cs + v.y * sn, oz = u.z * cs + v.z * sn
+            pos.push(pa.x + ox, pa.y + oy, pa.z + oz, pb.x + ox, pb.y + oy, pb.z + oz)
+            col.push(c.r, c.g, c.b, c.r, c.g, c.b)
+            const i0 = o + i * 2, i1 = o + ((i + 1) % SIDES) * 2
+            idx.push(i0, i1, i0 + 1, i1, i1 + 1, i0 + 1)
+          }
+        }
+        if (idx.length) {
+          const tube = new THREE.BufferGeometry()
+          tube.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); tube.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); tube.setIndex(idx)
+          routeGroup.add(new THREE.Mesh(tube, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })))
         }
       }
       const pin = (lon, lat, text, color) => {
@@ -432,6 +498,7 @@ function Scene({ exag, skin, focusReq, follow, onStatus, onInfo }) {
       }
       pin(base.lon, base.lat, 'H', '#7dd3fc')
       stops.forEach((p, i) => pin(p.lon, p.lat, String(i + 1), '#ff9a5c'))
+      invalidate()
     }
     build(1)
 
@@ -451,21 +518,34 @@ function Scene({ exag, skin, focusReq, follow, onStatus, onInfo }) {
         pos = tgt.clone().addScaledVector(dir, p.h * (kind === 'base' ? 7 : 4.5))
       }
       fly = { t0: performance.now(), p0: camera.position.clone(), g0: controls.target.clone(), p1: pos.clone(), g1: tgt.clone() }
+      invalidate()
     }
     const stopFly = () => { fly = null }
     renderer.domElement.addEventListener('pointerdown', stopFly)
     renderer.domElement.addEventListener('wheel', stopFly, { passive: true })
 
-    let raf = 0, tracking = null
+    let raf = 0, tracking = null, lastPlayT = null, wasVisible = false
+    // While the picture moves it is drawn at a lower resolution: no more than about six million pixels to begin with
+    // (a 4K or retina window would otherwise be 8 to 15 million), and a step lower whenever frames still come slower
+    // than about 50 a second. The first still frame is drawn sharp again. A still scene is not drawn at all.
+    const minRatio = Math.max(0.6, fullRatio * 0.5)
+    let moveRatio = Math.max(minRatio, Math.min(fullRatio, Math.sqrt(6e6 / Math.max(1, el.clientWidth * el.clientHeight))))
+    let curRatio = fullRatio, slow = 0, lastDraw = 0
+    const setRatio = (k) => { if (k !== curRatio) { curRatio = k; renderer.setPixelRatio(k) } }
     const loop = () => {
       raf = requestAnimationFrame(loop)
       const st = useStore.getState()
-      if (st.result && st.play.t != null) {
-        const p = sampleAt(st.result, st.play.t), q = sampleAt(st.result, st.play.t + 20)
+      const playT = st.result ? st.play.t : null
+      if (playT != null && playT !== lastPlayT) {
+        const p = sampleAt(st.result, playT), q = sampleAt(st.result, playT + 20)
         const dx = (q.lon - p.lon) * kx, dy = q.lat - p.lat
         if (dx * dx + dy * dy > 1e-12) walker.yaw = (Math.atan2(dx, dy) * 180) / Math.PI
-        walker.lon = p.lon; walker.lat = p.lat; walker.holder.visible = true; place(walker)
-      } else walker.holder.visible = false
+        walker.lon = p.lon; walker.lat = p.lat; place(walker)
+        invalidate()
+      }
+      lastPlayT = playT
+      walker.holder.visible = playT != null
+      if (walker.holder.visible !== wasVisible) { wasVisible = walker.holder.visible; invalidate() }
       // Follow mode: fly to the astronaut once when the replay starts, then carry the camera along with it,
       // so the view can still be orbited and zoomed around the walker.
       if (followRef.current && walker.holder.visible) {
@@ -480,30 +560,53 @@ function Scene({ exag, skin, focusReq, follow, onStatus, onInfo }) {
       // Stride eases in while the replay runs and out when it pauses; about 1.6 steps a second.
       const tNow = performance.now(), dt = Math.min(0.1, (tNow - lastT) / 1000); lastT = tNow
       stride += ((st.play.playing ? 1 : 0) - stride) * Math.min(1, dt * 6)
-      phase += dt * Math.PI * 1.6 * stride
+      if (stride < 0.002 && !st.play.playing) stride = 0
+      if (stride > 0 && walker.holder.visible) { phase += dt * Math.PI * 1.6 * stride; invalidate() }
       walker.model.userData.pose(phase, stride)
       if (fly) {
         const k = Math.min(1, (performance.now() - fly.t0) / 1100), q = k * k * (3 - 2 * k)
         camera.position.lerpVectors(fly.p0, fly.p1, q); controls.target.lerpVectors(fly.g0, fly.g1, q)
         if (k === 1) fly = null
+        invalidate()
       }
-      controls.update()
+      // True while the camera is still moving, including the glide after the mouse is released.
+      if (controls.update()) invalidate()
+      // The photo fills in tile by tile.
+      if (photo === 'loading') invalidate(1)
+      if (!dirty) {
+        // Nothing moved: one last sharp frame if the resolution was lowered, otherwise no frame at all.
+        if (curRatio === fullRatio) return
+        setRatio(fullRatio); slow = 0; lastDraw = 0
+      } else {
+        dirty--
+        const gap = lastDraw ? tNow - lastDraw : 0
+        lastDraw = tNow
+        if (gap > 0 && gap < 200) {
+          slow = gap > 20 ? slow + 1 : Math.max(0, slow - 1)
+          if (slow > 10 && moveRatio > minRatio) { moveRatio = Math.max(minRatio, moveRatio * 0.8); slow = 0 }
+        }
+        setRatio(moveRatio)
+      }
       for (const p of props) {
         if (p.label) { p.label.visible = p.holder.visible; p.label.position.copy(p.holder.position); p.label.position.y += p.h * 1.25 }
       }
+      // Depth precision goes with far / near: keeping near at 2% of the distance to what the camera looks at
+      // leaves centimetres of resolution on the terrain from any range, so the route never flickers into the ground.
+      const near = Math.max(0.5, camera.position.distanceTo(controls.target) * 0.02)
+      if (Math.abs(near - camera.near) > camera.near * 0.05) { camera.near = near; camera.updateProjectionMatrix() }
       sky.position.copy(camera.position); sky.scale.setScalar(camera.far * 0.5)
       camera.layers.set(0); renderer.autoClear = true; renderer.render(scene, camera)
-      camera.layers.set(WALKER_LAYER); renderer.autoClear = false; renderer.render(scene, camera)
+      if (walker.holder.visible) { camera.layers.set(WALKER_LAYER); renderer.autoClear = false; renderer.render(scene, camera) }
       camera.layers.set(0)
     }
     loop()
-    const ro = new ResizeObserver(() => { renderer.setSize(el.clientWidth, el.clientHeight); camera.aspect = el.clientWidth / el.clientHeight; camera.updateProjectionMatrix() })
+    const ro = new ResizeObserver(() => { renderer.setSize(el.clientWidth, el.clientHeight); camera.aspect = el.clientWidth / el.clientHeight; camera.updateProjectionMatrix(); invalidate() })
     ro.observe(el)
 
     const textures = {}
     const aniso = renderer.capabilities.getMaxAnisotropy()
     const gone = () => api.current?.disposed
-    const show = (tex) => { if (!gone()) { mat.map = tex; mat.needsUpdate = true } }
+    const show = (tex) => { if (!gone()) { mat.map = tex; mat.needsUpdate = true; invalidate() } }
     const grid = (kind) => {
       if (!textures[kind]) {
         const tex = new THREE.CanvasTexture(gridTexture(T, box, kind))
@@ -512,7 +615,7 @@ function Scene({ exag, skin, focusReq, follow, onStatus, onInfo }) {
       }
       return textures[kind]
     }
-    let wanted = null, photo = null // photo: null | 'loading' | 'done'
+    let wanted = null
     const setSkin = async (kind) => {
       wanted = kind
       if (kind !== 'photo') { show(grid(kind)); onStatus(null); return }
@@ -529,7 +632,7 @@ function Scene({ exag, skin, focusReq, follow, onStatus, onInfo }) {
       })
       if (gone()) { tex?.dispose(); return }
       if (!tex) { photo = null; if (wanted === 'photo') { onStatus('Снимок недоступен, показан рельеф'); show(grid('relief')) } return }
-      photo = 'done'
+      photo = 'done'; invalidate()
       if (wanted === 'photo') onStatus(null)
     }
     api.current = { build, setSkin, focus }
@@ -593,7 +696,7 @@ const hm = (s) => { const m = Math.round(s / 60); return `${Math.floor(m / 60)}:
 // Route replay inside the 3D view: start, pause, speed, scrub, and whether the camera follows the astronaut.
 function PlayBar({ follow, setFollow }) {
   const R = useStore((s) => s.result)
-  const t = useStore((s) => s.play.t)
+  const t = usePlayT()
   const stops = useStore((s) => s.stops)
   const setPlay = useStore((s) => s.setPlay)
   if (!R) return null

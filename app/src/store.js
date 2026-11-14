@@ -60,7 +60,8 @@ const trimRems = (soles) => soles.map((s) => ({ sol: +s.sol, date: s.terrestrial
 
 function legRoute(terrain, a, b, routing, p) {
   if (routing !== 'terrain') return { line: [a, b] }
-  const key = [a, b, p.flatSpeedKmh, p.maxSlopeDeg].flat().map((v) => (+v).toFixed(6)).join(',')
+  // The pace on the flat scales every leg alike, so it does not change which path is fastest: only the slope limit does.
+  const key = [a, b, p.maxSlopeDeg].flat().map((v) => (+v).toFixed(6)).join(',')
   if (!routeCache.has(key)) routeCache.set(key, terrain.route(a, b, { speed: (g) => speedMs(g, p), vmax: vmaxMs(p), maxSlope: p.maxSlopeDeg }))
   const line = routeCache.get(key)
   return line ? { line } : { line: [a, b], failed: true }
@@ -118,6 +119,9 @@ export const useStore = create((set, get) => {
     requestReach()
   }
   const viewshedFor = (base, params) => get().terrain.viewshed(base.lon, base.lat, params.mastM)
+  // Prepares the router's map of connected walkable ground while the page is idle, so the pass never delays a click.
+  const idle = typeof requestIdleCallback === 'function' ? requestIdleCallback : (fn) => setTimeout(fn, 300)
+  const warmRouter = () => idle(() => { const { terrain, params } = get(); terrain?.walkable(params.maxSlopeDeg) })
 
   // Out and back fields around the base, recomputed in the worker when the base or the walking model changes.
   let reachAsked = null
@@ -225,6 +229,7 @@ export const useStore = create((set, get) => {
       const patch = { params }
       if (k === 'mastM') patch.viewshed = viewshedFor(get().base, params)
       commit(patch)
+      if (k === 'maxSlopeDeg') warmRouter()
     },
     loadPreset: (key) => {
       const p = PRESETS[key], by = (id) => get().targets.find((t) => t.id === id)
@@ -349,6 +354,7 @@ export const useStore = create((set, get) => {
           get().loadPreset('floor')
         }
         get().refreshLive()
+        warmRouter()
       } catch (err) {
         console.error(err)
         set({ error: err.message })
@@ -388,6 +394,15 @@ export const useStore = create((set, get) => {
       toast.success('План сохранён', { description: 'marswalk-plan.geojson' })
     },
   }
+})
+
+// The replay clock moves every frame. Text that shows it is refreshed about 15 times a second instead:
+// each refresh re-renders a panel, and nobody reads numbers faster than that. Exact when paused or scrubbed.
+export const usePlayT = () => useStore((s) => {
+  const { t, playing, speed } = s.play
+  if (t == null || !playing) return t
+  const q = speed / 15
+  return Math.round(t / q) * q
 })
 
 export const VERDICT = {
