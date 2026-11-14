@@ -1,61 +1,61 @@
-# Демо за 30 секунд
+# 30-second demo
 
-Одна история: отметили цели - получили маршрут и вердикт - посмотрели, куда можно дойти - проиграли выход в 3D.
+One story: pick targets - get a route and a verdict - see where you can reach - replay the walk in 3D.
 
-Озвучка готова: [`audio/voiceover_onyx.wav`](audio/voiceover_onyx.wav), 27,5 с. Видео режем под голос, а не наоборот.
+The voiceover is ready: [`audio/voiceover_onyx.wav`](audio/voiceover_onyx.wav), 27.3 s. Cut the video to the voice, not the other way round.
 
-## Раскадровка
+## Storyboard
 
-Время взято из готовой озвучки. Последние 2,5 с - заставка без голоса.
+Timings come from the finished voiceover. The last 2.7 s are a title card with no voice.
 
-| Кадр | Время | На экране | Голос |
+| Shot | Time, s | On screen | Voice |
 | --- | --- | --- | --- |
-| 1 | 0,0-4,7 | Карта Езеро, лёгкий зум к дельте и базе Three Forks | Кратер Езеро по данным НАСА. Куда здесь дойдёт человек? |
-| 2 | 4,7-9,3 | Клик по Wildcat, затем по Нукшаку: маршрут сам огибает уступ дельты | Отмечаем цели - маршрут сам обходит опасные склоны. |
-| 3 | 9,3-15,1 | Панель плана: зелёное «Можно» и список проверок | План сразу проверяется: уклоны, кислород, скафандр, свет и связь. |
-| 4 | 15,1-19,1 | Включается слой «Зона достижимости» | Карта показывает, куда можно дойти - и вернуться. |
-| 5 | 19,1-23,5 | «3D-вид», затем «Проиграть»: астронавт идёт, кислород убывает | Повтор в 3D: кислород тает на каждом шаге. |
-| 6 | 23,5-30,0 | Заставка: Marswalk Planner + ссылка на live demo | Marswalk Planner. Сначала маршрут - потом выход. |
+| 1 | 0.0-4.5 | Jezero map, slow zoom to the delta and the Three Forks base | Jezero Crater, from real NASA data. Where can a human walk? |
+| 2 | 4.5-8.6 | Click Wildcat, then Nukshak: the route bends around the delta scarp by itself | Pick science targets - the route steers around dangerous slopes. |
+| 3 | 8.6-15.3 | Plan panel: green "go" verdict and the list of checks | Every plan is checked instantly: slopes, oxygen, suit time, daylight and comms. |
+| 4 | 15.3-19.1 | The reach map layer turns on | The reach map shows where you can go - and still make it back. |
+| 5 | 19.1-23.6 | "3D view", then "Play": the astronaut walks, oxygen goes down | Replay it in 3D and watch the oxygen drain with every step. |
+| 6 | 23.6-30.0 | Title card: Marswalk Planner + live demo link | Marswalk Planner. Plan the walk before you take it. |
 
-Отдельные фразы лежат в `audio/shot1_onyx.wav` ... `shot6_onyx.wav`, если удобнее раскладывать их на монтаже по одной.
+Each phrase is also a separate file, `audio/shot1_onyx.wav` ... `shot6_onyx.wav`, if that is easier to place in the edit.
 
-## Готовые планы
+## Ready-made plans
 
-Открывать в чистой вкладке. План из ссылки важнее сохранённого в браузере.
+Open in a clean tab. A plan from a link wins over the one saved in the browser.
 
-**Только база (кадры 1, 2, 4)** - база на складе Three Forks, точек нет. В кадре 2 кликаем по целям сами:
+**Base only (shots 1, 2, 4)** - base at the Three Forks depot, no stops. In shot 2 the targets are clicked live:
 
 https://marswalk-planner-one.vercel.app/#plan=eyJiIjpbNzcuNDA4NDM4LDE4LjQ1MzQxOSwi0KHQutC70LDQtCDQvtCx0YDQsNC30YbQvtCyIFRocmVlIEZvcmtzIl0sInMiOltdLCJwIjp7fX0
 
-**Готовый маршрут (кадры 3, 5)** - Three Forks → Wildcat (45 мин) → Нукшак (30 мин) → база. Вердикт «Можно», 1,4 км, около 1 ч 45 мин:
+**Full route (shots 3, 5)** - Three Forks → Wildcat (45 min) → Nukshak (30 min) → base. Verdict "go", 1.4 km, about 1 h 45 min:
 
 https://marswalk-planner-one.vercel.app/#plan=eyJiIjpbNzcuNDA4NDM4LDE4LjQ1MzQxOSwi0KHQutC70LDQtCDQvtCx0YDQsNC30YbQvtCyIFRocmVlIEZvcmtzIl0sInMiOltbNzcuNDA1OTI1LDE4LjQ1ODY0Nywi0JPRgNGP0LTQsCBXaWxkY2F0LCDRhNGA0L7QvdGCINC00LXQu9GM0YLRiyIsNDVdLFs3Ny40MDE0NCwxOC40NTA3MjYsItCc0YvRgSDQndGD0LrRiNCw0LosINC_0L7QtNC90L7QttC40LUg0LTQtdC70YzRgtGLIiwzMF1dLCJwIjp7fX0
 
-Локально то же самое: заменить начало на `http://localhost:5174/`.
+Locally the same: replace the start with `http://localhost:5174/`.
 
-Почему именно этот маршрут: длиннее петли у дельты почти всегда получают «Нельзя» из-за радиотени - мачта на базе не видна из-за уступа. Петля по дну кратера даёт «Осторожно». Для 30 секунд нужен чистый зелёный вердикт.
+Why this route: longer loops around the delta almost always get "no-go" for radio shadow - the scarp hides the base mast. The loop on the crater floor gets "caution". Thirty seconds need a clean green verdict.
 
-## Что вырезано
+## Cut
 
-AI-ассистент, автопланировщик, тени и ползунок Солнца, радиотень, лучшее время старта, аварийный возврат, варианты, экспорт, брифинг, марсианские часы, погода, снимки Perseverance, настройка допущений.
+AI assistant, auto planner, shadows and the Sun slider, radio shadow, best start time, emergency return, variants, export, briefing, Mars clock, weather, Perseverance images, editing assumptions.
 
-Автопланировщик убран сознательно: с полным списком целей он собирает 6 точек на 12 км, и такой план получает «Нельзя» по связи (он проверяет только время, свет, кислород и проходимость). В демо это выглядит как ошибка.
+The auto planner is cut on purpose: with every target selected it builds 6 stops over 12 km, and that plan gets "no-go" for comms (the planner only checks time, daylight, oxygen and passability). In a demo that looks like a bug.
 
-## Как снимать
+## Recording
 
-- Каждый кадр - отдельный дубль с запасом в 2-3 секунды, потом склейка. Загрузка тайлов и расчёты не попадают в кадр.
-- Перед записью пройтись по всей области и открыть 3D, чтобы тайлы были в кэше.
-- Слой «Зона достижимости» (панель «Слои» → «Анализ рельефа») включить один раз до записи кадра 4, затем выключить и включить уже на камеру.
-- Проигрывание ставить на ×900: весь выход идёт около 7 с, на монтаже ускорить в 1,5-2 раза под кадр 5. Прокладку маршрута в кадре 2 можно ускорить так же.
-- `H` прячет все панели (кадры 1, 4), `F` - полный экран.
-- Окно браузера 1920×1080, масштаб 100%.
+- Each shot is a separate take with 2-3 s to spare, then edited together. Tile loading and calculations stay out of frame.
+- Before recording, pan over the whole area and open 3D once so the tiles are cached.
+- Turn on the reach map layer (Layers panel → terrain analysis) once before shot 4, then turn it off and on again on camera.
+- Set the replay to ×900: the whole walk runs in about 7 s; speed it up 1.5-2x in the edit to fit shot 5. Route drawing in shot 2 can be sped up the same way.
+- `H` hides all panels (shots 1, 4), `F` is fullscreen.
+- Browser window 1920×1080, zoom 100%.
 
-## Пересобрать озвучку
+## Rebuilding the voiceover
 
-Текст фраз и стиль голоса - в начале [`voiceover.py`](voiceover.py). Нужен `OPENAI_API_KEY` (берётся из `app/.env.local`).
+Phrase text and voice style are at the top of [`voiceover.py`](voiceover.py). Needs `OPENAI_API_KEY` (read from `app/.env.local`).
 
 ```bash
 .venv/Scripts/python demo/voiceover.py onyx
 ```
 
-Другие голоса: `ash`, `echo`, `sage` (мужские), `nova`, `coral`, `shimmer` (женские). Скрипт печатает время каждой фразы - если текст поменялся, раскадровку надо сдвинуть под новые цифры. Паузы длиннее 0,22 с внутри фраз сжимаются автоматически.
+Other voices: `ash`, `echo`, `sage` (male), `nova`, `coral`, `shimmer` (female). The script prints the time of each phrase - if the text changes, shift the storyboard to the new numbers. Pauses inside a phrase longer than 0.22 s are shortened automatically.

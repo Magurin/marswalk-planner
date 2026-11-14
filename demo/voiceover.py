@@ -24,21 +24,20 @@ VOICE = sys.argv[1] if len(sys.argv) > 1 else "onyx"
 LEAD, GAP = 0.3, 0.35  # seconds of silence before the first phrase and between phrases
 
 STYLE = (
-    "Speak Russian. Confident documentary narrator of a short NASA mission video. "
+    "Confident documentary narrator of a short NASA mission video. American English. "
     "Warm low voice, clear diction, no theatrical drama. "
-    "Fast pace, about 170 words per minute, like a 30-second product trailer. "
-    "Keep pauses short, even at full stops and dashes. Pronounce English names the English way: "
-    "Perseverance, Marswalk Planner, NASA as 'НАСА'."
+    "Fast pace, like a 30-second product trailer. Keep pauses short, even at full stops and dashes. "
+    "Jezero is pronounced 'YEH-zeh-roh'."
 )
 
 # One phrase per shot, in order.
 SHOTS = [
-    "Кратер Езеро по данным НАСА. Куда здесь дойдёт человек?",
-    "Отмечаем цели - маршрут сам обходит опасные склоны.",
-    "План сразу проверяется: уклоны, кислород, скафандр, свет и связь.",
-    "Карта показывает, куда можно дойти - и вернуться.",
-    "Повтор в 3D: кислород тает на каждом шаге.",
-    "Marswalk Planner. Сначала маршрут - потом выход.",
+    "Jezero Crater, from real NASA data. Where can a human walk?",
+    "Pick science targets - the route steers around dangerous slopes.",
+    "Every plan is checked instantly: slopes, oxygen, suit time, daylight and comms.",
+    "The reach map shows where you can go - and still make it back.",
+    "Replay it in 3D and watch the oxygen drain with every step.",
+    "Marswalk Planner. Plan the walk before you take it.",
 ]
 
 
