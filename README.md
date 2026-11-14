@@ -20,7 +20,7 @@ Real NASA terrain, imagery and weather in one map: plan a walk, check it against
 
 Perseverance has already found the places in Jezero worth sending a person back to: the Three Forks sample depot, organic-bearing mudstones, the "leopard spots" of Cheyava Falls. Marswalk Planner answers the practical question: **can an astronaut walk there from the base, do the work and get home alive** - given slopes, suit endurance, oxygen, daylight, comms and cold.
 
-The app runs entirely in the browser. A server is needed only for two optional things: a faster map (local tile cache) and the AI assistant (OpenAI proxy).
+The app runs entirely in the browser. Server-side code is optional: a tile cache for a faster map (a Rust tool locally, a Vercel function in production) and an OpenAI proxy for the AI assistant.
 
 > The interface is in Russian. The code, comments and this README are in English.
 
@@ -242,7 +242,7 @@ Fine print:
 
 - The cache defaults to `tiles/cache` and only grows. If disk space is tight, pass `--cache` or turn the warm-up off with `--no-prefetch`; `--hirise-max` sets how deep HiRISE is warmed.
 - Stats are at `http://127.0.0.1:8787/health`.
-- **The photo skin of the 3D view needs the cache.** WebGL requires tiles with CORS headers, which the cache adds. Without it the "slopes" and "relief" skins remain.
+- **In development, the photo skin of the 3D view needs the cache.** WebGL requires tiles with CORS headers, which the cache adds; without it only the "slopes" and "relief" skins remain. In production tiles come from the same origin (`/api/trek`), so the photo skin works there without it.
 - The map uses the `EPSG:4326` projection (the Trek tile grid), not the usual Web Mercator.
 
 ## Data
@@ -283,7 +283,7 @@ Hosted on **Vercel**, connected to this repo: `main` goes to production, every P
 - `vercel.json` builds `app/` and publishes `app/dist`. The build uses relative paths (`base: './'`), so it works from any subdirectory.
 - `api/openai/v1/responses.js` is the production twin of the dev proxy: it adds the key and forwards the request to OpenAI. Set `OPENAI_API_KEY` in project settings; without it the assistant reports that it is not configured.
 - That function does not check who is calling and has no rate limit: any visitor spends your key. For a public demo, set a spending limit on the OpenAI side.
-- The tile cache is not deployed to Vercel - it is a local tool.
+- `api/trek/[...path].js` proxies NASA Trek tiles and marks them immutable, so the Vercel CDN keeps each tile after the first request. Production builds load tiles from `/api/trek`; the dev server has no functions and goes to NASA directly. The Rust cache in `tiles/` is a local development tool and is not deployed.
 
 ## Structure
 
@@ -302,7 +302,7 @@ app/                    React app
   src/components/       Map (Leaflet), 3D (three.js), panels, briefing
   public/data/          Terrain, rover track and weather snapshots
   public/models/        3D models of Perseverance and Ingenuity
-api/                    Vercel function: OpenAI proxy
+api/                    Vercel functions: OpenAI proxy, cached NASA Trek tiles
 tiles/                  Rust cache for NASA Trek tiles
 tools/                  Data preparation (Python)
 web/                    First prototype in plain HTML and JS, kept for history
