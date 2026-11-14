@@ -18,6 +18,8 @@ const FEEDS = {
 const STORE_KEY = 'marswalk.plan.v3'
 const UI_KEY = 'marswalk.ui.v1'
 const VARIANTS_KEY = 'marswalk.variants.v1'
+// Layers panel 340 + plan panel 400 + gaps leave under ~560 px of map below this width.
+export const roomForBothPanels = () => window.innerWidth >= 1320
 const loadJson = (k, def) => { try { return JSON.parse(localStorage.getItem(k) || 'null') ?? def } catch { return def } }
 const saveJson = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch { /* storage unavailable */ } }
 
@@ -169,6 +171,8 @@ export const useStore = create((set, get) => {
     setPanel: (panel) => set({ panel }),
     togglePanel: (k) => {
       const ui = { ...get().ui, [k]: !get().ui[k] }
+      // Too narrow for both side panels and a usable map: opening one side closes the other.
+      if (ui[k] && (k === 'left' || k === 'right') && !roomForBothPanels()) ui[k === 'left' ? 'right' : 'left'] = false
       set({ ui, hidden: false })
       try { localStorage.setItem(UI_KEY, JSON.stringify(ui)) } catch { /* storage unavailable */ }
     },

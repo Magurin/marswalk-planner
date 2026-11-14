@@ -65,13 +65,13 @@ export function TopBar() {
         </div>
         <Button variant={ui.left && !aiOpen ? 'secondary' : 'ghost'} className={`hidden h-9 rounded-xl px-3 text-[13.5px] lg:flex ${ui.left && !aiOpen ? 'text-primary' : ''}`} aria-pressed={ui.left && !aiOpen} onClick={() => { if (aiOpen) useStore.getState().setLeftTab('layers'); else togglePanel('left') }}><Layers />Слои</Button>
         <Button variant={aiOpen ? 'secondary' : 'ghost'} className={`hidden h-9 rounded-xl px-3 text-[13.5px] lg:flex ${aiOpen ? 'text-primary' : ''}`} aria-pressed={aiOpen} onClick={() => (aiOpen ? togglePanel('left') : openAssistant())}><Sparkles />Помощник</Button>
-        <Button variant="ghost" className="hidden h-9 w-52 shrink justify-start gap-2 rounded-xl border px-3 text-[13.5px] text-muted-foreground xl:flex" onClick={() => setCmdOpen(true)}>
+        <Button variant="ghost" className="hidden h-9 w-52 min-w-9 shrink justify-start overflow-hidden gap-2 rounded-xl border px-3 text-[13.5px] text-muted-foreground xl:flex" onClick={() => setCmdOpen(true)}>
           <Search className="size-4" />Поиск...
         </Button>
         <IconBtn label="Поиск" className="xl:hidden" onClick={() => setCmdOpen(true)}><Search /></IconBtn>
       </div>
 
-      <div className="panel hidden h-[52px] min-w-0 items-center overflow-hidden divide-x divide-border px-1.5 xl:flex">
+      <div className="panel hidden h-[52px] shrink-0 items-center divide-x divide-border px-1.5 xl:flex">
         <Fact label="Время в Езеро"><span className="inline-flex items-center gap-1.5">{day ? <Sun className="size-3.5 text-amber-300" /> : <Moon className="size-3.5 text-sky-300" />}{fmtH(mt.ltst)}</span></Fact>
         <Fact label="Сол миссии">{mt.sol}</Fact>
         <Fact label="Сезон (север)" className="max-2xl:hidden">Ls {fx(mt.ls, 1)}°, {seasonName(mt.ls)}</Fact>

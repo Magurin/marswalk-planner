@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useSyncExternalStore } from 'react'
 import { Layers, ClipboardList, CloudSun, Activity, X, PanelLeftClose, PanelRightClose, Sparkles } from 'lucide-react'
-import { useStore } from '@/store'
+import { useStore, roomForBothPanels } from '@/store'
 import { MapView } from '@/components/MapView'
 import { TopBar, MapHud } from '@/components/Chrome'
 import { LayersPanel } from '@/components/LayersPanel'
@@ -102,11 +102,11 @@ function MobileBar({ show }) {
     <>
       {show && (
         <div className="panel absolute inset-x-2 bottom-2 z-[1000] flex gap-1.5 p-1.5">
-          <Button variant="secondary" className="h-9 flex-1" onClick={() => setPanel('layers')}><Layers />Слои</Button>
-          <Button className="h-9 flex-1" onClick={() => setPanel('plan')}><ClipboardList />План{dot && <span className={`size-2.5 rounded-full ring-2 ring-primary-foreground/40 ${dot}`} />}</Button>
-          <Button variant="secondary" className="h-9 flex-1" onClick={() => setPanel('conditions')}><CloudSun />Погода</Button>
-          <Button variant="secondary" size="icon-lg" aria-label="Помощник плана" onClick={() => setPanel('assistant')}><Sparkles /></Button>
-          <Button variant={profile ? 'default' : 'secondary'} size="icon-lg" aria-label="Профиль высот" aria-pressed={profile} onClick={() => togglePanel('profile')}><Activity /></Button>
+          <Button variant="secondary" className="h-9 min-w-0 flex-1 shrink gap-1.5 px-2" onClick={() => setPanel('layers')}><Layers />Слои</Button>
+          <Button className="h-9 min-w-0 flex-1 shrink gap-1.5 px-2" onClick={() => setPanel('plan')}><ClipboardList />План{dot && <span className={`size-2.5 rounded-full ring-2 ring-primary-foreground/40 ${dot}`} />}</Button>
+          <Button variant="secondary" className="h-9 min-w-0 flex-1 shrink gap-1.5 px-2" onClick={() => setPanel('conditions')}><CloudSun />Погода</Button>
+          <Button variant="secondary" size="icon" className="size-9" aria-label="Помощник плана" onClick={() => setPanel('assistant')}><Sparkles /></Button>
+          <Button variant={profile ? 'default' : 'secondary'} size="icon" className="size-9" aria-label="Профиль высот" aria-pressed={profile} onClick={() => togglePanel('profile')}><Activity /></Button>
         </div>
       )}
       <Drawer open={!!panel} onOpenChange={(o) => !o && setPanel(null)}>
@@ -128,6 +128,12 @@ export default function App() {
   const view3d = useStore((s) => s.view3d)
   const desktop = useDesktop()
   useEffect(() => { init() }, [init])
+  // When the window gets too narrow for both side panels, keep the plan and fold the layers panel.
+  useEffect(() => {
+    const fit = () => { const s = useStore.getState(); if (s.ui.left && s.ui.right && !roomForBothPanels()) s.togglePanel('left') }
+    fit(); window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [])
   useEffect(() => {
     const onChange = () => useStore.setState({ fullscreen: !!document.fullscreenElement })
     const onKey = (e) => {

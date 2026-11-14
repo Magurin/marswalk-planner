@@ -122,26 +122,28 @@ export function Variants() {
   return (
     <div className="space-y-2">
       {variants.length > 0 && (
-        <div className="overflow-hidden rounded-xl border bg-card text-[12.5px]">
-          <table className="w-full tabular">
-            <thead className="text-[11.5px] text-muted-foreground"><tr><th className="py-1.5 pl-3 text-left font-medium">Вариант</th>{cols.map(([h]) => <th key={h} className="px-1 py-1.5 text-right font-medium">{h}</th>)}<th className="w-14" /></tr></thead>
-            <tbody>
-              {variants.map((v) => (
-                <tr key={v.id} className="group border-t hover:bg-accent/50" onMouseEnter={() => setGhost(v.id)} onMouseLeave={() => setGhost(null)}>
-                  <td className="max-w-0 py-1.5 pl-3">
-                    <div className="flex items-center gap-1.5"><span className={`size-2 shrink-0 rounded-full ${DOT[v.sum.overall]}`} title={VERDICT[v.sum.overall].label} />
-                      <input value={v.name} onChange={(e) => renameVariant(v.id, e.target.value)} className="w-full min-w-0 truncate bg-transparent font-medium outline-none" aria-label="Название варианта" /></div>
-                    <div className="pl-3.5 text-[11.5px] text-muted-foreground">{v.sum.stops} {plural(v.sum.stops, ['точка', 'точки', 'точек'])}, до {fmtH(v.sum.endLTST)}</div>
-                  </td>
-                  {cols.map(([h, f, k], i) => <td key={h} className={`px-1 text-right ${variants.length > 1 && k(v) === best[i] ? 'font-semibold text-go' : ''}`}>{f(v)}</td>)}
-                  <td className="pr-1.5 text-right whitespace-nowrap">
-                    <button className="rounded p-1 hover:bg-accent" title="Открыть вариант" aria-label="Открыть вариант" onClick={() => loadVariant(v.id)}><Upload className="size-3.5" /></button>
-                    <button className="rounded p-1 hover:bg-accent hover:text-nogo" title="Удалить вариант" aria-label="Удалить вариант" onClick={() => deleteVariant(v.id)}><Trash2 className="size-3.5" /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        // One card per variant: the name gets the full width and the figures sit in their own row,
+        // so nothing is squeezed in the narrow plan panel.
+        <div className="divide-y overflow-hidden rounded-xl border bg-card text-[12.5px]">
+          {variants.map((v) => (
+            <div key={v.id} className="px-3 py-2 hover:bg-accent/50" onMouseEnter={() => setGhost(v.id)} onMouseLeave={() => setGhost(null)}>
+              <div className="flex items-center gap-1.5">
+                <span className={`size-2 shrink-0 rounded-full ${DOT[v.sum.overall]}`} title={VERDICT[v.sum.overall].label} />
+                <input value={v.name} onChange={(e) => renameVariant(v.id, e.target.value)} className="min-w-0 flex-1 truncate bg-transparent font-medium outline-none" aria-label="Название варианта" />
+                <span className="shrink-0 text-[11.5px] whitespace-nowrap text-muted-foreground">{v.sum.stops} {plural(v.sum.stops, ['точка', 'точки', 'точек'])}, до {fmtH(v.sum.endLTST)}</span>
+                <button className="shrink-0 rounded p-1 hover:bg-accent" title="Открыть вариант" aria-label="Открыть вариант" onClick={() => loadVariant(v.id)}><Upload className="size-3.5" /></button>
+                <button className="shrink-0 rounded p-1 hover:bg-accent hover:text-nogo" title="Удалить вариант" aria-label="Удалить вариант" onClick={() => deleteVariant(v.id)}><Trash2 className="size-3.5" /></button>
+              </div>
+              <div className="mt-1 grid grid-cols-5 gap-1 pl-3.5 tabular">
+                {cols.map(([h, f, k], i) => (
+                  <div key={h} className="min-w-0">
+                    <div className="truncate text-[10.5px] text-muted-foreground">{h}</div>
+                    <div className={`truncate whitespace-nowrap ${variants.length > 1 && k(v) === best[i] ? 'font-semibold text-go' : ''}`}>{f(v)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
       <div className="flex items-center gap-2">
