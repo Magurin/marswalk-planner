@@ -1,0 +1,15 @@
+{
+ "source": "MRO CTX stereo DTM (JEZ_ctx_B_soc_008), 20 m/px, MOLA-referenced, USGS Astrogeology",
+ "width": 1596,
+ "height": 1512,
+ "west": 77.16046545922367,
+ "east": 77.6989751662947,
+ "south": 18.211027390963398,
+ "north": 18.721194481872804,
+ "cell_m": 20.0,
+ "offset": -3000.0,
+ "scale": 0.05,
+ "nodata": 0,
+ "min": -2710.69580078125,
+ "max": -1515.53955078125
+}

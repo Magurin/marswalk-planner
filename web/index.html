@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marswalk Planner - Jezero Crater</title>
+<link rel="stylesheet" href="vendor/leaflet.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header id="top">
+  <div class="brand">
+    <div class="logo" aria-hidden="true"></div>
+    <div>
+      <h1>Marswalk Planner</h1>
+      <p>Jezero Crater, Mars - layered EVA map from NASA mission data</p>
+    </div>
+  </div>
+  <div id="clock" class="chips"></div>
+</header>
+
+<main>
+  <aside id="left" class="panel">
+    <section>
+      <h2>Map layers</h2>
+      <div id="layers"></div>
+    </section>
+    <section>
+      <h2>Sun and shadows</h2>
+      <div class="row"><label for="sunTime">Local solar time</label><output id="sunOut"></output></div>
+      <input id="sunTime" type="range" min="5" max="19" step="0.25" value="9">
+      <div class="row small"><span id="sunInfo"></span>
+        <span><button class="link" id="sunNow">now</button> <button class="link" id="sunStart">EVA start</button></span></div>
+    </section>
+    <section>
+      <h2>Surface conditions</h2>
+      <div id="wx"></div>
+    </section>
+    <section>
+      <h2>Data sources</h2>
+      <ul id="sources" class="sources"></ul>
+    </section>
+  </aside>
+
+  <section id="center">
+    <div id="map"></div>
+    <div id="legend" class="legend" hidden></div>
+    <div id="readout" class="readout">Move the pointer over the map</div>
+    <div id="hint" class="hint">Click the map to add an EVA stop. Drag markers to adjust.</div>
+    <div id="profile">
+      <div class="profile-head"><strong>Route elevation profile</strong><span id="profileInfo">colour shows terrain slope</span></div>
+      <canvas id="profileCv"></canvas>
+    </div>
+  </section>
+
+  <aside id="right" class="panel">
+    <section>
+      <h2>Marswalk plan</h2>
+      <div id="verdict" class="verdict"></div>
+      <div id="stats" class="stats"></div>
+    </section>
+    <section>
+      <div class="row">
+        <label for="startTime">EVA start (local solar time)</label>
+        <input id="startTime" type="time" value="09:00" step="900">
+      </div>
+      <div class="row">
+        <label for="routing">Routing</label>
+        <select id="routing">
+          <option value="terrain">Terrain-aware (least time, avoids steep ground)</option>
+          <option value="straight">Straight lines</option>
+        </select>
+      </div>
+      <div class="row">
+        <span>Base / habitat: <strong id="baseName"></strong></span>
+        <button id="pickBase" class="btn small">Move base</button>
+      </div>
+    </section>
+    <section>
+      <h3>Stops</h3>
+      <ol id="stops" class="stops"></ol>
+      <div class="btns">
+        <button class="btn" data-preset="floor">Demo: crater floor loop</button>
+        <button class="btn" data-preset="delta">Demo: delta front loop</button>
+        <button class="btn" id="clearPlan">Clear</button>
+        <button class="btn" id="exportPlan">Export GeoJSON</button>
+      </div>
+    </section>
+    <section>
+      <h3>Go / no-go checks</h3>
+      <ul id="checks" class="checks"></ul>
+    </section>
+    <section>
+      <details id="assume">
+        <summary>Model assumptions (editable)</summary>
+        <div id="params" class="params"></div>
+        <p class="small muted">Speed follows a Tobler-style slope curve scaled to the suited flat pace. Metabolic rate follows Santee et al. (2001) with Mars gravity. Oxygen assumes 20.1 kJ per litre. This is a planning aid, not flight rules.</p>
+      </details>
+    </section>
+  </aside>
+</main>
+
+<script src="vendor/leaflet.min.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

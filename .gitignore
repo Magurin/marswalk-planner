@@ -1,0 +1,26 @@
+# Python
+.venv/
+__pycache__/
+
+# Node / build
+node_modules/
+dist/
+
+# Rust tile cache
+tiles/target/
+tiles/cache/
+
+# Secrets
+.env
+.env.*
+*.local
+
+# Raw source data (download link in README)
+data/raw/
+
+# Local-only
+.claude/
+*.docx
+.DS_Store
+.vscode/
+.idea/
