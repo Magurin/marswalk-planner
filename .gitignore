@@ -26,3 +26,4 @@ data/raw/
 .idea/
 
 .vercel
+demo/out/

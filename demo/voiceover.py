@@ -36,7 +36,7 @@ SHOTS = [
     "Pick science targets - the route steers around dangerous slopes.",
     "Every plan is checked instantly: slopes, oxygen, suit time, daylight and comms.",
     "The reach map shows where you can go - and still make it back.",
-    "Replay it in 3D and watch the oxygen drain with every step.",
+    "Then replay the whole walk in 3D, step by step.",
     "Marswalk Planner. Plan the walk before you take it.",
 ]
 
@@ -103,15 +103,18 @@ def main():
     key = api_key()
     OUT.mkdir(exist_ok=True)
     silence = lambda sec: bytes(int(sec * RATE) * WIDTH)
-    track, t = bytearray(silence(LEAD)), LEAD
+    track, t, timings = bytearray(silence(LEAD)), LEAD, []
     for i, text in enumerate(SHOTS, 1):
         frames = tighten(trim(tts(text, key)))
         save_wav(OUT / f"shot{i}_{VOICE}.wav", frames)
         dur = len(frames) / (RATE * WIDTH)
         print(f"shot{i}: voice {t:5.2f}-{t + dur:5.2f} s  {text}")
+        timings.append({"start": round(t, 3), "length": round(dur, 3), "text": text})
         track += frames + silence(GAP)
         t += dur + GAP
     save_wav(OUT / f"voiceover_{VOICE}.wav", bytes(track))
+    # record.mjs cuts the video to these numbers.
+    (OUT / f"timings_{VOICE}.json").write_text(json.dumps(timings, indent=2), encoding="utf-8")
     print(f"total {t:.2f} s -> {OUT / f'voiceover_{VOICE}.wav'}")
 
 
