@@ -67,13 +67,19 @@ export function Profile() {
       const a = R.abort.s, col = R.abort.check.status === 'nogo' ? '#ff6b5b' : '#f5c84b'
       g.fillStyle = col; g.beginPath(); g.moveTo(X(a.d), Y(a.z) - 7); g.lineTo(X(a.d) - 6, Y(a.z) - 17); g.lineTo(X(a.d) + 6, Y(a.z) - 17); g.closePath(); g.fill()
     }
+    // Stop badges that would touch drop to a second row instead of piling on top of each other.
+    const rowsX = [-Infinity, -Infinity]
     R.arrivals.slice(0, -1).forEach((a, i) => {
       const x = X(a.dist)
+      let row = rowsX.findIndex((px) => x - px >= 21)
+      if (row < 0) row = rowsX[0] <= rowsX[1] ? 0 : 1
+      rowsX[row] = x
+      const cy = m.t - 2 + row * 21
       g.strokeStyle = 'rgba(255,255,255,0.45)'; g.lineWidth = 1; g.setLineDash([4, 4])
-      g.beginPath(); g.moveTo(x, m.t); g.lineTo(x, h - m.b); g.stroke(); g.setLineDash([])
+      g.beginPath(); g.moveTo(x, cy + 9); g.lineTo(x, h - m.b); g.stroke(); g.setLineDash([])
       g.fillStyle = '#ff9a5c'; g.strokeStyle = '#fff'; g.lineWidth = 2
-      g.beginPath(); g.arc(x, m.t - 2, 9, 0, 7); g.fill(); g.stroke()
-      g.fillStyle = '#2a1206'; g.font = font(11, 700); g.fillText(i + 1, x, m.t + 2)
+      g.beginPath(); g.arc(x, cy, 9, 0, 7); g.fill(); g.stroke()
+      g.fillStyle = '#2a1206'; g.font = font(11, 700); g.fillText(i + 1, x, cy + 4)
     })
     geom.current = { S, X, Y, m, w, h }
     setPlot({ l: m.l, span: w - m.l - m.r, dist: R.dist })

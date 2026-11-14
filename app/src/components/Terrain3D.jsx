@@ -4,7 +4,6 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { X, Loader2 } from 'lucide-react'
-import { fx } from '@/lib/fmt'
 import { useStore } from '@/store'
 import { sunAt } from '@/lib/marstime'
 import { sampleAt } from '@/lib/eva'
@@ -17,11 +16,19 @@ const CTX = ['JEZ_ctx_B_soc_008_orthoMosaic_6m_Eqc_latTs0_lon0', 13]
 const HIRISE = ['JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first_dd', 17]
 const SKINS = [['photo', 'Снимок'], ['slope', 'Уклоны'], ['relief', 'Рельеф']]
 
-const loadImg = (src) => new Promise((res) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = () => res(null); im.src = src })
+// A tile that has not arrived in `ms` is skipped, so one stuck request cannot hold the whole photo.
+const loadImg = (src, ms = 12000) => new Promise((res) => {
+  const im = new Image(), t = setTimeout(() => { im.src = ''; res(null) }, ms)
+  im.crossOrigin = 'anonymous'
+  im.onload = () => { clearTimeout(t); res(im) }
+  im.onerror = () => { clearTimeout(t); res(null) }
+  im.src = src
+})
 
 // Orbital image of the area stitched from map tiles: CTX 6 m everywhere, HiRISE 25 cm on top where it exists.
 // Tiles must come with CORS headers for WebGL, which the local tile cache sends; without it the photo skin is not offered.
-async function photoTexture(box, maxPx = 2048) {
+// The texture is handed to onFirst as soon as the first tile lands and then refreshes as the rest arrive.
+async function photoTexture(box, onFirst, maxPx = 2048) {
   const ok = await fetch(`${TILE_PROXY}/health`, { signal: AbortSignal.timeout(800) }).then((r) => r.ok).catch(() => false)
   const base = ok ? `${TILE_PROXY}/trek` : TREK
   const [w, s, e, n] = box
@@ -30,7 +37,9 @@ async function photoTexture(box, maxPx = 2048) {
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H
   const g = cv.getContext('2d')
   g.fillStyle = '#6b5446'; g.fillRect(0, 0, W, H)
-  let drawn = 0
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace
+  let drawn = 0, queued = false
+  const refresh = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; tex.needsUpdate = true }) } }
   for (const [id, maxNative] of [CTX, HIRISE]) {
     const zt = Math.min(z, maxNative), deg = 180 / 2 ** zt
     const x0 = Math.floor((w + 180) / deg), x1 = Math.floor((e + 180) / deg), y0 = Math.floor((90 - n) / deg), y1 = Math.floor((90 - s) / deg)
@@ -40,13 +49,15 @@ async function photoTexture(box, maxPx = 2048) {
         if (!im) return
         const lon = x * deg - 180, lat = 90 - y * deg
         g.drawImage(im, ((lon - w) / (e - w)) * W, ((n - lat) / (n - s)) * H, (deg / (e - w)) * W, (deg / (n - s)) * H)
-        drawn++
+        if (drawn++ === 0) onFirst(tex)
+        refresh()
       }))
     }
     await Promise.all(jobs)
   }
-  try { g.getImageData(0, 0, 1, 1) } catch { return null } // tainted: tiles came without CORS
-  return drawn ? cv : null
+  try { g.getImageData(0, 0, 1, 1) } catch { tex.dispose(); return null } // tainted: tiles came without CORS
+  if (!drawn) tex.dispose()
+  return drawn ? tex : null
 }
 
 function gridTexture(T, box, kind) {
@@ -136,7 +147,7 @@ function habitat() {
   const g = new THREE.Group()
   const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...o })
   const white = std('#efeee9'), grey = std('#a9adb3', { roughness: 0.5, metalness: 0.4 }), dark = std('#2b2f35', { roughness: 0.5, metalness: 0.3 })
-  const orange = std('#ff7a3d', { roughness: 0.55 }), pad = std('#8a6450', { roughness: 1 }), cell = std('#16264a', { roughness: 0.25, metalness: 0.7 })
+  const orange = std('#ff7a3d', { roughness: 0.55 }), pad = std('#7b7975', { roughness: 1 }), cell = std('#16264a', { roughness: 0.25, metalness: 0.7 })
   const glow = std('#ffe2a8', { emissive: '#ffb347', emissiveIntensity: 1.6 }), red = std('#ff4d4d', { emissive: '#ff2a2a', emissiveIntensity: 2 })
   const glass = std('#a8e6bd', { transparent: true, opacity: 0.42, roughness: 0.1, metalness: 0.1, side: THREE.DoubleSide }), leaf = std('#3f9b4b', { roughness: 0.9 })
   const add = (geo, mat, x, y, z, rx = 0, ry = 0, rz = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); g.add(m); return m }
@@ -146,7 +157,7 @@ function habitat() {
 
   // levelled pad with a marked walkway to the airlock
   add(cyl(15, 15.6, 0.3, 48), pad, 0, 0.15, 0)
-  add(box(2.2, 0.04, 7), std('#a67a62', { roughness: 1 }), 0, 0.32, 10.5)
+  add(box(2.2, 0.04, 7), std('#9a9893', { roughness: 1 }), 0, 0.32, 10.5)
   for (const k of [-1, 1]) for (let i = 0; i < 4; i++) add(ball(0.12), glow, 1.3 * k, 0.4, 8 + i * 1.8)
 
   // main habitat: drum, dome, window band, ribs
@@ -446,18 +457,36 @@ function Scene({ exag, skin, focusReq, onStatus, onInfo }) {
     ro.observe(el)
 
     const textures = {}
-    const setSkin = async (kind) => {
+    const aniso = renderer.capabilities.getMaxAnisotropy()
+    const gone = () => api.current?.disposed
+    const show = (tex) => { if (!gone()) { mat.map = tex; mat.needsUpdate = true } }
+    const grid = (kind) => {
       if (!textures[kind]) {
-        onStatus(kind === 'photo' ? 'Собираю снимок из тайлов...' : null)
-        const cv = kind === 'photo' ? await photoTexture(box) : gridTexture(T, box, kind)
-        if (!cv) { onStatus('Снимок недоступен без локального кэша тайлов, показан рельеф'); return setSkin('relief') }
-        const tex = new THREE.CanvasTexture(cv)
-        tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy()
+        const tex = new THREE.CanvasTexture(gridTexture(T, box, kind))
+        tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = aniso
         textures[kind] = tex
       }
-      if (api.current?.disposed) return
-      mat.map = textures[kind]; mat.needsUpdate = true
-      if (kind !== 'photo' || textures.photo) onStatus(null)
+      return textures[kind]
+    }
+    let wanted = null, photo = null // photo: null | 'loading' | 'done'
+    const setSkin = async (kind) => {
+      wanted = kind
+      if (kind !== 'photo') { show(grid(kind)); onStatus(null); return }
+      if (photo === 'done') { show(textures.photo); onStatus(null); return }
+      // Until the photo arrives the shaded relief stands in, so the terrain is never blank.
+      show(textures.photo ?? grid('relief'))
+      onStatus('Собираю снимок из тайлов...')
+      if (photo === 'loading') return
+      photo = 'loading'
+      const tex = await photoTexture(box, (t) => {
+        if (gone()) return
+        t.anisotropy = aniso; textures.photo = t
+        if (wanted === 'photo') show(t)
+      })
+      if (gone()) { tex?.dispose(); return }
+      if (!tex) { photo = null; if (wanted === 'photo') { onStatus('Снимок недоступен, показан рельеф'); show(grid('relief')) } return }
+      photo = 'done'
+      if (wanted === 'photo') onStatus(null)
     }
     api.current = { build, setSkin, focus }
 
@@ -484,7 +513,6 @@ export default function Terrain3D() {
   const [info, setInfo] = useState(null)
   const [focusReq, setFocusReq] = useState(null)
   const cam = [['route', 'Маршрут'], ['base', 'База'], ...(info?.roverReady ? [['rover', 'Perseverance']] : []), ...(info?.heliReady ? [['heli', 'Ingenuity']] : [])]
-  const rover = info?.rover
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') setView3d(false) }
     window.addEventListener('keydown', onKey)
@@ -508,13 +536,6 @@ export default function Terrain3D() {
           </div>
         </div>
         {status && <span className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">{status.endsWith('...') && <Loader2 className="size-3.5 animate-spin" />}{status}</span>}
-      </div>
-      <div className="panel absolute bottom-3 left-3 max-w-[min(680px,calc(100vw-24px))] px-3 py-1.5 text-[12px] text-muted-foreground">
-        <div>Левая кнопка - вращать, правая - сдвигать, колесо - приближать. Освещение по ползунку Солнца. Esc - закрыть.</div>
-        {info && <div>{rover
-          ? rover.current ? 'Perseverance стоит на своей последней известной позиции. Модели NASA; объекты увеличены, чтобы их было видно на местности.'
-            : `Perseverance показан там, где стоял на сол ${rover.sol}; сейчас он в ${fx(rover.awayKm, 1)} км отсюда. Голубая линия - его путь. Модели NASA; объекты увеличены, чтобы их было видно на местности.`
-          : info.failed ? 'Модель Perseverance не загрузилась.' : 'Perseverance через этот участок не проезжал, поэтому марсохода здесь нет.'}</div>}
       </div>
       <Button className="absolute top-3 right-3" onClick={() => setView3d(false)}><X />Закрыть</Button>
     </div>

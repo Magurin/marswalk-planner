@@ -114,7 +114,7 @@ export function MapHud() {
         </div>
       )}
       {cursor && (
-        <div style={{ ...centre, bottom: 'calc(var(--pad-b) + 12px)' }} className="panel pointer-events-none absolute z-[999] flex -translate-x-1/2 gap-4 rounded-xl px-4 py-2 text-[13px] whitespace-nowrap tabular max-lg:hidden">
+        <div style={{ ...centre, bottom: 'calc(var(--pad-b) + 40px)' }} className="panel pointer-events-none absolute z-[999] flex -translate-x-1/2 gap-4 rounded-xl px-4 py-2 text-[13px] whitespace-nowrap tabular max-lg:hidden">
           <span>{fx(Math.abs(cursor.lat), 5)}° {cursor.lat >= 0 ? 'с. ш.' : 'ю. ш.'}, {fx(Math.abs(cursor.lon), 5)}° {cursor.lon >= 0 ? 'в. д.' : 'з. д.'}</span>
           {cursor.z === cursor.z
             ? <><span><span className="text-muted-foreground">высота</span> {cursor.z.toFixed(0)} м</span><span><span className="text-muted-foreground">уклон</span> {cursor.slope.toFixed(0)}°</span></>

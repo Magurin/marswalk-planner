@@ -6,7 +6,7 @@
 
 Real NASA terrain, imagery and weather in one map: plan a walk, check it against suit limits, replay it.
 
-[**Live demo**](https://magurin.github.io/marswalk-planner/) · [Run locally](#run) · [Data](#data)
+[**Live demo**](https://marswalk-planner.vercel.app) · [Run locally](#run) · [Data](#data)
 
 ![React](https://img.shields.io/badge/React_19-20232a?logo=react&logoColor=61dafb)
 ![Vite](https://img.shields.io/badge/Vite-646cff?logo=vite&logoColor=white)
@@ -46,9 +46,11 @@ npm run dev        # http://localhost:5174
   ```bash
   cargo run --release --manifest-path tiles/Cargo.toml
   ```
-- **AI assistant** - put `OPENAI_API_KEY=...` in `app/.env.local`. The dev server proxies the calls, the key never reaches the browser. Not available in the static build.
+- **AI assistant** - put `OPENAI_API_KEY=...` in `app/.env.local`. The dev server proxies the calls, the key never reaches the browser.
 
-`npm run build` produces a static site in `app/dist`; pushes to `main` deploy it to GitHub Pages.
+## Deploy
+
+Hosted on **Vercel**, connected to this repo: `main` goes to production, every PR gets a preview URL. Build settings live in `vercel.json`; `api/openai/v1/responses.js` is the production proxy for the assistant (set `OPENAI_API_KEY` in project settings).
 
 ## Data
 
@@ -74,6 +76,7 @@ python -m venv .venv && .venv/Scripts/pip install rasterio numpy
 
 ```
 app/          React app (UI in src/components, EVA / terrain / routing model in src/lib)
+api/          Vercel function: OpenAI proxy for the assistant
 tiles/        Rust caching proxy for NASA Trek tiles
 tools/        Data preparation script
 web/          First prototype, plain HTML

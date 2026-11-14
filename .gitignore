@@ -24,3 +24,5 @@ data/raw/
 .DS_Store
 .vscode/
 .idea/
+
+.vercel
