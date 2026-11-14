@@ -296,18 +296,40 @@ export const useStore = create((set, get) => {
         const by = (id) => get().targets.find((t) => t.id === id)
         const prevStops = get().stops
         // The fields run a little optimistic against the exact model along the drawn route: take the fullest plan
-        // that still passes the hard checks (suit time, daylight, oxygen) once routed for real.
-        const HARD = ['time', 'sun', 'o2', 'route']
+        // that passes every check once routed for real.
+        const toStops = (order) => order.map((id) => { const t = by(id); return { lon: t.lon, lat: t.lat, name: t.name, minutes } })
+        const passes = () => get().result && get().result.overall !== 'nogo'
         let pick = null
         for (const pl of r.plans) {
           if (!pl.order.length || (pick && pl.order.join() === pick.order.join())) continue
-          commit({ stops: pl.order.map((id) => { const t = by(id); return { lon: t.lon, lat: t.lat, name: t.name, minutes } }) })
+          commit({ stops: toStops(pl.order) })
           pick = pl
-          if (!get().result.checks.some((c) => HARD.includes(c.id) && c.status === 'nogo')) break
+          if (passes()) break
+        }
+        // The search only budgets time, daylight and oxygen. Radio shadow, walk-back range and emergency return depend on
+        // the route as a whole, so if every budget still fails one of those, try the subsets of those plans (visit order
+        // kept), largest first: the most targets that pass, the shortest walk on a tie. At most 7 stops, so at most a few
+        // hundred routes, and the legs are cached.
+        if (pick && !passes()) {
+          const orders = [...new Set(r.plans.filter((pl) => pl.order.length).map((pl) => pl.order.join()))].map((o) => o.split(','))
+          const subsets = (o, k) => (k === 0 ? [[]] : o.length < k ? [] : [...subsets(o.slice(1), k - 1).map((rest) => [o[0], ...rest]), ...subsets(o.slice(1), k)])
+          let best = null, tried = 0
+          for (let k = Math.max(...orders.map((o) => o.length)) - 1; k >= 1 && !best; k--) {
+            const seen = new Set()
+            for (const o of orders) for (const sub of subsets(o, k)) {
+              if (seen.has(sub.join())) continue
+              seen.add(sub.join())
+              commit({ stops: toStops(sub) })
+              if (passes() && (!best || get().result.hours < best.hours)) best = { order: sub, hours: get().result.hours }
+              if (++tried % 8 === 0) await new Promise((res) => setTimeout(res)) // keep the page responsive
+            }
+          }
+          if (best) { commit({ stops: toStops(best.order) }); pick = { ...pick, order: best.order } }
+          else pick = null
         }
         if (!pick) {
           commit({ stops: prevStops })
-          return toast.error('No target fits in the EVA', { description: r.outside.length === cands.length ? 'All selected targets are beyond the walk-back limit from the base.' : 'Not enough time, daylight or oxygen for even one target. Move the base or relax the assumptions.' })
+          return toast.error('No target fits in the EVA', { description: r.outside.length === cands.length ? 'All selected targets are beyond the walk-back limit from the base.' : 'No set of the selected targets passes every check, not even one target alone. Move the base or relax the assumptions.' })
         }
         get().fitPlan()
         const R = get().result, n = pick.order.length, skipped = cands.length - n

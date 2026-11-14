@@ -43,7 +43,7 @@ export function AutoPlan() {
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>EVA auto planner</DialogTitle>
-          <DialogDescription className="text-[13.5px]">Picks which of the selected targets to visit and in what order, to see as much as possible within suit endurance, daylight and oxygen with reserve. Paths follow the terrain from the current base. The current route stops will be replaced.</DialogDescription>
+          <DialogDescription className="text-[13.5px]">Picks which of the selected targets to visit and in what order, to see as much as possible in a plan that passes every check: suit endurance, daylight, oxygen with reserve, comms and emergency return. Paths follow the terrain from the current base. The current route stops will be replaced.</DialogDescription>
         </DialogHeader>
         <div className="max-h-[46vh] space-y-1 overflow-y-auto pr-1">
           {inside.map((t) => (
