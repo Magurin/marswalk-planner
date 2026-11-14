@@ -256,6 +256,23 @@ Fine print:
 | Mars 2020 **Ingenuity** | Flight log and airfields |
 | MSL **Curiosity** REMS | Multi-year seasonal weather (Gale Crater, not Jezero) |
 
+### Direct links
+
+| Dataset or API | Link |
+| --- | --- |
+| NASA Mars Trek WMTS tiles (all map layers and the 3D photo skin) | https://trek.nasa.gov/mars/ , tiles from `https://trek.nasa.gov/tiles/Mars/EQ/<layer>/1.0.0/default/default028mm/{z}/{y}/{x}` |
+| HiRISE 25 cm Jezero mosaic (Trek layer) | `JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first_dd` |
+| CTX 6 m Jezero mosaic and CTX block-adjusted mosaic (Trek layers) | `JEZ_ctx_B_soc_008_orthoMosaic_6m_Eqc_latTs0_lon0`, `Jezero_CTX_BlockAdj_dd` |
+| CTX 20 m Jezero DTM (USGS, Mars 2020 TRN products) | https://planetarymaps.usgs.gov/mosaic/mars2020_trn/CTX/JEZ_ctx_B_soc_008_DTM_MOLAtopography_DeltaGeoid_20m_Eqc_latTs0_lon0.tif |
+| MOLA colour shaded relief (Trek layer) | `Mars_MGS_MOLA_ClrShade_merge_global_463m` |
+| THEMIS day and night IR mosaics (Trek layers) | `THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018`, `THEMIS_NightIR_ControlledMosaics_100m_v2_oct2018` |
+| Viking MDIM 2.1 colour mosaic (Trek layer) | `Mars_Viking_MDIM21_ClrMosaic_global_232m` |
+| Perseverance traverse and waypoints (NASA MMGIS) | https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_traverse.json , https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_waypoints.json |
+| Ingenuity flight waypoints (NASA MMGIS) | https://mars.nasa.gov/mmgis-maps/M20/Layers/json/m20_heli_waypoints.json |
+| Perseverance MEDA weather | https://mars.nasa.gov/rss/api/?feed=weather&category=mars2020&feedtype=json |
+| Curiosity REMS weather | https://mars.nasa.gov/rss/api/?feed=weather&category=msl&feedtype=json |
+| Perseverance raw images | https://mars.nasa.gov/rss/api/?feed=raw_images&category=mars2020&feedtype=json&sol=<sol> |
+
 **Snapshots and live data.** Terrain, the rover track and weather ship as snapshots in `app/public/data`, so the calculations work offline. On start the app also asks the live mars.nasa.gov feeds (MEDA and REMS weather, rover position) and quietly stays on the snapshots if a feed is unreachable. Map tiles and raw camera images always come from the network.
 
 ### Rebuilding the snapshots
@@ -328,3 +345,7 @@ web/                    First prototype in plain HTML and JS, kept for history
 - Speed, energetics and limits are reasoned assumptions from published work (Tobler, Santee et al., Apollo experience), not certified figures for a specific suit.
 
 > Marswalk Planner is a planning aid with open assumptions, not flight rules.
+
+## License
+
+[Apache License 2.0](LICENSE). NASA, USGS and other mission data keep their own terms; NASA imagery and data are generally free to use with credit.
