@@ -110,9 +110,9 @@ export function reachRatio(R, p, sunset) {
 
 // Cool colours, so the zone never reads as the slope classes (green to red) drawn under it.
 export const REACH_CLASSES = [
-  { max: 0.5, color: [56, 189, 248], label: 'до 50% ресурса' },
+  { max: 0.5, color: [56, 189, 248], label: 'under 50% of budget' },
   { max: 0.8, color: [129, 140, 248], label: '50-80%' },
-  { max: 1, color: [244, 114, 182], label: '80-100%, на пределе' },
+  { max: 1, color: [244, 114, 182], label: '80-100%, at the limit' },
 ]
 
 export function reachCanvas(R, p, sunset) {
@@ -154,11 +154,11 @@ export function abortAnalysis(R, reach, T, p) {
   const reserve = reserveKg(p)
   const status = worst.ratio > 1 ? 'nogo' : worst.o2Left < reserve / 2 || worst.ratio > 0.9 ? 'caution' : 'go'
   const tail = worst.ratio > 1
-    ? (worst.o2Need > p.o2TankKg ? ': кислорода на это не хватит' : ': ресурса скафандра на это не хватит')
-    : `, в баллоне останется ${fx(worst.o2Left, 2)} кг`
+    ? (worst.o2Need > p.o2TankKg ? ': not enough oxygen for that' : ': not enough suit time for that')
+    : `, ${fx(worst.o2Left, 2)} kg left in the tank`
   worst.check = {
-    id: 'abort', label: 'Аварийный возврат', status,
-    detail: `При травме или утечке (обратно вдвое медленнее, кислорода вдвое больше) хуже всего на ${fx(worst.s.d / 1000, 2)} км от старта: до базы ${Math.round(worst.tBack / 60)} мин и ${fx(worst.o2Back, 2)} кг кислорода${tail}`,
+    id: 'abort', label: 'Emergency return', status,
+    detail: `After an injury or a leak (half the pace, twice the oxygen) the worst point is ${fx(worst.s.d / 1000, 2)} km from the start: ${Math.round(worst.tBack / 60)} min and ${fx(worst.o2Back, 2)} kg of oxygen back to base${tail}`,
   }
   return worst
 }

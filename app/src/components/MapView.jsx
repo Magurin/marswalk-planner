@@ -9,7 +9,7 @@ import { fx } from '@/lib/fmt'
 import { reachCanvas } from '@/lib/reach'
 import { sampleAt, speedMs, vmaxMs } from '@/lib/eva'
 
-const outsideDem = () => toast.warning('Вне модели рельефа', { description: 'Маршрут можно проложить только внутри модели рельефа CTX кратера Езеро.' })
+const outsideDem = () => toast.warning('Outside the terrain model', { description: 'Routes can only be planned inside the CTX terrain model of Jezero Crater.' })
 import { SITE } from '@/store'
 
 // Tiles go through the local Rust cache (tiles/) when it runs, else straight to NASA.
@@ -118,7 +118,7 @@ export function MapView() {
         const nice = [5, 10, 20, 50, 100, 200, 500, 1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, 1e6, 2e6, 5e6]
         const m = nice.find((n) => n / mpp >= 70) || nice.at(-1)
         this.el.style.width = `${Math.round(m / mpp)}px`
-        this.el.textContent = m >= 1000 ? `${(m / 1000).toLocaleString('ru-RU')} км` : `${m} м`
+        this.el.textContent = m >= 1000 ? `${(m / 1000).toLocaleString('en-US')} km` : `${m} m`
       },
     })
     map.addControl(new Scale())
@@ -187,8 +187,8 @@ export function MapView() {
       L.polyline(lines, { color: '#7dd3fc', weight: 2.5, interactive: false }).addTo(g)
       const last = s.m20.waypoints.at(-1)
       L.marker([last.lat, last.lon], { icon: icon('mk-rover', 16), zIndexOffset: 400 }).addTo(g)
-        .bindTooltip('Perseverance, последняя позиция', { direction: 'top', offset: [0, -10] })
-        .bindPopup(`<h4>Perseverance</h4><p>Последняя известная позиция на сол ${last.sol}. Пройдено ${last.km != null ? fx(last.km, 2) : '?'} км, наклон ${fx(last.tilt, 1)}°, высота ${Math.round(last.elev)} м.</p><div class="meta">${s.live.rover ? 'Онлайн-данные NASA о положении ровера' : 'Сохранённая копия данных NASA'}</div>`)
+        .bindTooltip('Perseverance, last position', { direction: 'top', offset: [0, -10] })
+        .bindPopup(`<h4>Perseverance</h4><p>Last known position on sol ${last.sol}. Driven ${last.km != null ? fx(last.km, 2) : '?'} km, tilt ${fx(last.tilt, 1)}°, elevation ${Math.round(last.elev)} m.</p><div class="meta">${s.live.rover ? 'Live NASA rover position data' : 'Cached copy of NASA data'}</div>`)
     }
     const drawHeli = (s) => {
       const g = groups.heli; g.clearLayers()
@@ -197,7 +197,7 @@ export function MapView() {
       h.forEach((f, i) => {
         const fin = i === h.length - 1
         L.marker([f.lat, f.lon], { icon: icon('mk-heli', fin ? 14 : 9) }).addTo(g)
-          .bindPopup(`<h4>Ingenuity: ${fin ? 'последняя площадка' : `площадка ${f.flight}`}</h4><p>Сел здесь после полёта ${f.flight} на сол ${f.sol}.${f.dist_m ? ` Пролетел ${Math.round(f.dist_m)} м` : ''}${f.alt_m ? `, наибольшая высота ${f.alt_m} м` : ''}${f.dist_m || f.alt_m ? '.' : ''}${fin ? ' Вертолёт остался здесь с повреждённой лопастью.' : ''}</p>`)
+          .bindPopup(`<h4>Ingenuity: ${fin ? 'final airfield' : `airfield ${f.flight}`}</h4><p>Landed here after flight ${f.flight} on sol ${f.sol}.${f.dist_m ? ` Flew ${Math.round(f.dist_m)} m` : ''}${f.alt_m ? `, max altitude ${f.alt_m} m` : ''}${f.dist_m || f.alt_m ? '.' : ''}${fin ? ' The helicopter remains here with a damaged rotor blade.' : ''}</p>`)
       })
     }
     const drawTargets = (s) => {
@@ -205,7 +205,7 @@ export function MapView() {
       for (const t of s.targets) {
         L.marker([t.lat, t.lon], { icon: icon('mk-sci', 13), title: t.name, zIndexOffset: 300 }).addTo(g)
           .bindTooltip(t.name, { direction: 'top', offset: [0, -9] })
-          .bindPopup(`<h4>${esc(t.name)}</h4><p>${esc(t.sci)}</p><div class="meta">${fx(t.lat, 5)}° с. ш., ${fx(t.lon, 5)}° в. д.${t.elev != null ? `, высота ${Math.round(t.elev)} м` : ''}<br>${esc(t.src || `Позиция ровера на сол ${t.atSol}`)}</div>${t.atSol != null ? `<div class="photos" data-sol="${t.atSol}"></div>` : ''}<div class="actions"><button class="primary" data-act="add" data-id="${t.id}">Добавить в маршрут</button><button data-act="base" data-id="${t.id}">Поставить базу здесь</button></div>`)
+          .bindPopup(`<h4>${esc(t.name)}</h4><p>${esc(t.sci)}</p><div class="meta">${fx(t.lat, 5)}° N, ${fx(t.lon, 5)}° E${t.elev != null ? `, elevation ${Math.round(t.elev)} m` : ''}<br>${esc(t.src || `Rover position on sol ${t.atSol}`)}</div>${t.atSol != null ? `<div class="photos" data-sol="${t.atSol}"></div>` : ''}<div class="actions"><button class="primary" data-act="add" data-id="${t.id}">Add to route</button><button data-act="base" data-id="${t.id}">Set base here</button></div>`)
       }
     }
     const drawRing = (s) => {
@@ -220,7 +220,7 @@ export function MapView() {
       planLayer.clearLayers(); routeLayer.clearLayers()
       if (!s.base) return
       const bm = L.marker([s.base.lat, s.base.lon], { icon: icon('mk-base', 26, 'H'), draggable: true, zIndexOffset: 900 }).addTo(planLayer)
-        .bindTooltip(`База: ${s.base.name}`, { direction: 'top', offset: [0, -14] })
+        .bindTooltip(`Base: ${s.base.name}`, { direction: 'top', offset: [0, -14] })
       bm.on('dragend', () => { const ll = bm.getLatLng(), st = store.getState(); if (!st.terrain.inside(ll.lng, ll.lat)) { bm.setLatLng([st.base.lat, st.base.lon]); return outsideDem() } st.setBase({ lon: ll.lng, lat: ll.lat }) })
       s.stops.forEach((st, i) => {
         const m = L.marker([st.lat, st.lon], { icon: icon('mk-stop', 26, i + 1), draggable: true, zIndexOffset: 800 }).addTo(planLayer)
@@ -399,14 +399,14 @@ export function MapView() {
       const box = e.popup.getElement()?.querySelector('.photos[data-sol]')
       if (!box || box.dataset.done) return
       box.dataset.done = '1'
-      box.innerHTML = '<div class="ph-note">Загружаю снимки ровера...</div>'
+      box.innerHTML = '<div class="ph-note">Loading rover images...</div>'
       roverPhotos(+box.dataset.sol).then((list) => {
         box.innerHTML = list.length
-          ? `<div class="ph-note">Снимки Perseverance за сол ${box.dataset.sol}</div><div class="ph-grid">${list.map((im) => `<a href="${im.full}" target="_blank" rel="noopener" title="${esc(im.title)}"><img src="${im.small}" alt="${esc(im.title)}" loading="lazy"></a>`).join('')}</div>`
-          : `<div class="ph-note">Снимков за сол ${box.dataset.sol} в архиве NASA нет</div>`
+          ? `<div class="ph-note">Perseverance images from sol ${box.dataset.sol}</div><div class="ph-grid">${list.map((im) => `<a href="${im.full}" target="_blank" rel="noopener" title="${esc(im.title)}"><img src="${im.small}" alt="${esc(im.title)}" loading="lazy"></a>`).join('')}</div>`
+          : `<div class="ph-note">No images from sol ${box.dataset.sol} in the NASA archive</div>`
         refit(e.popup)
         box.querySelectorAll('img').forEach((im) => im.addEventListener('load', () => refit(e.popup), { once: true }))
-      }).catch(() => { box.innerHTML = '<div class="ph-note">Не удалось загрузить снимки ровера</div>'; refit(e.popup) })
+      }).catch(() => { box.innerHTML = '<div class="ph-note">Could not load rover images</div>'; refit(e.popup) })
     })
     const ro = new ResizeObserver(() => { map.invalidateSize(); fitMinZoom() })
     ro.observe(el.current)

@@ -22,8 +22,6 @@ Perseverance has already found the places in Jezero worth sending a person back 
 
 The app runs entirely in the browser. Server-side code is optional: a tile cache for a faster map (a Rust tool locally, a Vercel function in production) and an OpenAI proxy for the AI assistant.
 
-> The interface is in Russian. The code, comments and this README are in English.
-
 ## Features
 
 | | |
@@ -111,8 +109,8 @@ What is stored and where:
 
 | What | Where |
 | --- | --- |
-| Current plan (base, stops, assumptions, routing mode) | `localStorage`, key `marswalk.plan.v3` |
-| Saved variants | `localStorage`, key `marswalk.variants.v1` |
+| Current plan (base, stops, assumptions, routing mode) | `localStorage`, key `marswalk.plan.v4` |
+| Saved variants | `localStorage`, key `marswalk.variants.v2` |
 | Which panels are open | `localStorage`, key `marswalk.ui.v1` |
 | Share link | `#plan=<base64url of compact JSON>` in the address. Only assumptions that differ from the defaults go in |
 | Export | `marswalk-plan.geojson`: base, stops, route line with elevations, verdict, checks and assumptions |

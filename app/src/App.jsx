@@ -42,11 +42,11 @@ function LeftPanel() {
       <Tabs value={tab} onValueChange={setTab} className="flex h-full flex-col gap-0">
         <div className="flex items-center gap-2 border-b py-2.5 pr-2 pl-3">
           <TabsList className="grid flex-1 grid-cols-3">
-            <TabsTrigger value="layers" className="px-1 text-[13px]"><Layers />Слои</TabsTrigger>
-            <TabsTrigger value="conditions" className="px-1 text-[13px]"><CloudSun />Условия</TabsTrigger>
-            <TabsTrigger value="assistant" className="px-1 text-[13px]"><Sparkles />ИИ</TabsTrigger>
+            <TabsTrigger value="layers" className="px-1 text-[13px]"><Layers />Layers</TabsTrigger>
+            <TabsTrigger value="conditions" className="px-1 text-[13px]"><CloudSun />Conditions</TabsTrigger>
+            <TabsTrigger value="assistant" className="px-1 text-[13px]"><Sparkles />AI</TabsTrigger>
           </TabsList>
-          <CloseBtn label="Скрыть левую панель" icon={PanelLeftClose} onClick={() => togglePanel('left')} />
+          <CloseBtn label="Hide left panel" icon={PanelLeftClose} onClick={() => togglePanel('left')} />
         </div>
         {tab === 'assistant'
           ? <TabsContent value="assistant" className="min-h-0 flex-1"><Assistant /></TabsContent>
@@ -65,7 +65,7 @@ function RightPanel() {
   const togglePanel = useStore((s) => s.togglePanel)
   return (
     <aside className="panel absolute z-[1000] animate-in overflow-hidden duration-200 fade-in slide-in-from-right-4" style={{ top: TOP, right: GAP, bottom: GAP, width: RIGHT_W }}>
-      <CloseBtn label="Скрыть панель плана" icon={PanelRightClose} className="absolute top-2.5 right-2.5 z-10" onClick={() => togglePanel('right')} />
+      <CloseBtn label="Hide plan panel" icon={PanelRightClose} className="absolute top-2.5 right-2.5 z-10" onClick={() => togglePanel('right')} />
       <ScrollArea className="h-full"><div className="p-4"><PlanPanel /></div></ScrollArea>
     </aside>
   )
@@ -78,17 +78,17 @@ function ProfileCard({ desktop }) {
     : { left: 8, right: 8, bottom: MOBILE_BAR + 8, height: MOBILE_PROFILE_H }
   return (
     <div className="panel absolute z-[1000] animate-in overflow-hidden transition-[left,right] duration-200 fade-in slide-in-from-bottom-4" style={style}>
-      <CloseBtn label="Скрыть профиль высот" className="absolute top-1 right-1.5 z-10" onClick={() => togglePanel('profile')} />
+      <CloseBtn label="Hide elevation profile" className="absolute top-1 right-1.5 z-10" onClick={() => togglePanel('profile')} />
       <Profile />
     </div>
   )
 }
 
 const MOBILE = {
-  layers: { title: 'Слои карты', desc: 'Слои с данными NASA и время для теней.', body: <LayersPanel /> },
-  plan: { title: 'План выхода', desc: 'Маршрут, точки и проверки готовности.', body: <PlanPanel /> },
-  conditions: { title: 'Условия', desc: 'Погода по данным Perseverance и Curiosity.', body: <ConditionsPanel /> },
-  assistant: { title: 'Помощник плана', desc: 'Спросите про план или попросите его изменить.', body: <div className="-mx-4 -mb-6 h-[70vh]"><Assistant /></div> },
+  layers: { title: 'Map layers', desc: 'NASA data layers and the time for shadows.', body: <LayersPanel /> },
+  plan: { title: 'EVA plan', desc: 'Route, stops and readiness checks.', body: <PlanPanel /> },
+  conditions: { title: 'Conditions', desc: 'Weather from Perseverance and Curiosity.', body: <ConditionsPanel /> },
+  assistant: { title: 'Assistant', desc: 'Ask about the plan or ask to change it.', body: <div className="-mx-4 -mb-6 h-[70vh]"><Assistant /></div> },
 }
 
 function MobileBar({ show }) {
@@ -102,11 +102,11 @@ function MobileBar({ show }) {
     <>
       {show && (
         <div className="panel absolute inset-x-2 bottom-2 z-[1000] flex gap-1.5 p-1.5">
-          <Button variant="secondary" className="h-9 min-w-0 flex-1 shrink gap-1.5 px-2" onClick={() => setPanel('layers')}><Layers />Слои</Button>
-          <Button className="h-9 min-w-0 flex-1 shrink gap-1.5 px-2" onClick={() => setPanel('plan')}><ClipboardList />План{dot && <span className={`size-2.5 rounded-full ring-2 ring-primary-foreground/40 ${dot}`} />}</Button>
-          <Button variant="secondary" className="h-9 min-w-0 flex-1 shrink gap-1.5 px-2" onClick={() => setPanel('conditions')}><CloudSun />Погода</Button>
-          <Button variant="secondary" size="icon" className="size-9" aria-label="Помощник плана" onClick={() => setPanel('assistant')}><Sparkles /></Button>
-          <Button variant={profile ? 'default' : 'secondary'} size="icon" className="size-9" aria-label="Профиль высот" aria-pressed={profile} onClick={() => togglePanel('profile')}><Activity /></Button>
+          <Button variant="secondary" className="h-9 min-w-0 flex-1 shrink gap-1.5 px-2" onClick={() => setPanel('layers')}><Layers />Layers</Button>
+          <Button className="h-9 min-w-0 flex-1 shrink gap-1.5 px-2" onClick={() => setPanel('plan')}><ClipboardList />Plan{dot && <span className={`size-2.5 rounded-full ring-2 ring-primary-foreground/40 ${dot}`} />}</Button>
+          <Button variant="secondary" className="h-9 min-w-0 flex-1 shrink gap-1.5 px-2" onClick={() => setPanel('conditions')}><CloudSun />Weather</Button>
+          <Button variant="secondary" size="icon" className="size-9" aria-label="Assistant" onClick={() => setPanel('assistant')}><Sparkles /></Button>
+          <Button variant={profile ? 'default' : 'secondary'} size="icon" className="size-9" aria-label="Elevation profile" aria-pressed={profile} onClick={() => togglePanel('profile')}><Activity /></Button>
         </div>
       )}
       <Drawer open={!!panel} onOpenChange={(o) => !o && setPanel(null)}>
@@ -174,7 +174,7 @@ export default function App() {
       </div>
       <PlayDriver />
       <Briefing />
-      {view3d && <Suspense fallback={<div className="fixed inset-0 z-[2500] grid place-items-center bg-black/80 text-[15px]">Загружаю 3D...</div>}><Terrain3D /></Suspense>}
+      {view3d && <Suspense fallback={<div className="fixed inset-0 z-[2500] grid place-items-center bg-black/80 text-[15px]">Loading 3D...</div>}><Terrain3D /></Suspense>}
       <CommandMenu />
       <Toaster position="top-center" offset={78} richColors closeButton toastOptions={{ classNames: { toast: 'text-[13.5px]' } }} />
     </TooltipProvider>

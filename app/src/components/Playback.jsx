@@ -48,12 +48,12 @@ export function PlayControls({ compact = false }) {
   const btn = 'grid size-7 place-items-center rounded-md hover:bg-accent [&_svg]:size-4'
   return (
     <div className="flex items-center gap-1">
-      <button className={`${btn} ${play.playing ? 'text-primary' : ''}`} onClick={toggle} aria-label={play.playing ? 'Пауза' : 'Проиграть выход'} title={play.playing ? 'Пауза' : 'Проиграть выход'}>{play.playing ? <Pause /> : <Play />}</button>
-      {play.t != null && <button className={btn} onClick={() => setPlay({ t: null, playing: false })} aria-label="Остановить проигрывание" title="Остановить проигрывание"><Square /></button>}
-      {!compact && <span className="text-[12px] text-muted-foreground">проиграть</span>}
+      <button className={`${btn} ${play.playing ? 'text-primary' : ''}`} onClick={toggle} aria-label={play.playing ? 'Pause' : 'Play EVA'} title={play.playing ? 'Pause' : 'Play EVA'}>{play.playing ? <Pause /> : <Play />}</button>
+      {play.t != null && <button className={btn} onClick={() => setPlay({ t: null, playing: false })} aria-label="Stop replay" title="Stop replay"><Square /></button>}
+      {!compact && <span className="text-[12px] text-muted-foreground">replay</span>}
       <div className="ml-1 flex overflow-hidden rounded-md border text-[11.5px] tabular">
         {SPEEDS.map((v) => (
-          <button key={v} onClick={() => setPlay({ speed: v })} className={`px-1.5 py-0.5 ${play.speed === v ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`} title={`1 секунда - ${v / 60} мин выхода`}>×{v}</button>
+          <button key={v} onClick={() => setPlay({ speed: v })} className={`px-1.5 py-0.5 ${play.speed === v ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`} title={`1 second = ${v / 60} min of EVA`}>×{v}</button>
         ))}
       </div>
     </div>
@@ -82,29 +82,29 @@ export function PlayHud() {
   const home = reachAt(reach, terrain, s.lon, s.lat)
   const homeO2 = home ? home.eBack * O2_KG_PER_J : null
   const spare = home ? left - homeO2 : null
-  const status = s.working ? `работа: ${stops[s.leg]?.name ?? `точка ${s.leg + 1}`}` : s.leg < stops.length ? `идёт к точке ${s.leg + 1}` : 'возвращается на базу'
+  const status = s.working ? `working: ${stops[s.leg]?.name ?? `stop ${s.leg + 1}`}` : s.leg < stops.length ? `walking to stop ${s.leg + 1}` : 'returning to base'
   const tone = spare == null ? '' : spare < 0 ? 'text-nogo' : spare < R.reserveKg / 2 ? 'text-caution' : 'text-go'
   return (
     <div style={{ left: 'calc(var(--pad-l) + (100% - var(--pad-l) - var(--pad-r)) / 2)' }} className="panel absolute top-[76px] z-[1001] w-[min(560px,calc(100%-24px))] -translate-x-1/2 px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[15px] font-semibold"><span className="tabular">{fmtH(s.ltst)}</span> <span className="font-normal text-muted-foreground">- {status}</span></div>
-          <div className="text-[12px] text-muted-foreground tabular">прошло {hm(t)} из {hm(R.hours * 3600)}</div>
+          <div className="text-[12px] text-muted-foreground tabular">elapsed {hm(t)} of {hm(R.hours * 3600)}</div>
         </div>
         <PlayControls compact />
       </div>
-      <input type="range" min={0} max={R.hours * 3600} step={1} value={t} onChange={(e) => setPlay({ t: +e.target.value, playing: false })} className="mt-2 w-full accent-[var(--primary)]" aria-label="Момент выхода" />
+      <input type="range" min={0} max={R.hours * 3600} step={1} value={t} onChange={(e) => setPlay({ t: +e.target.value, playing: false })} className="mt-2 w-full accent-[var(--primary)]" aria-label="EVA time" />
       <div className="mt-2 grid grid-cols-4 gap-3">
-        <Item icon={Footprints} label="Пройдено">{fx(s.d / 1000, 2)} км</Item>
-        <Item icon={Wind} label="Кислород">{fx(left, 2)} кг</Item>
-        <Item icon={Home} label="Если назад сейчас" tone={tone}>{home ? `${Math.round(home.tBack / 60)} мин` : 'н/д'}</Item>
-        <Item icon={Clock} label="Запас O2 после" tone={tone}>{spare == null ? 'н/д' : `${fx(spare, 2)} кг`}</Item>
+        <Item icon={Footprints} label="Walked">{fx(s.d / 1000, 2)} km</Item>
+        <Item icon={Wind} label="Oxygen left">{fx(left, 2)} kg</Item>
+        <Item icon={Home} label="Return now" tone={tone}>{home ? `${Math.round(home.tBack / 60)} min` : 'n/a'}</Item>
+        <Item icon={Clock} label="O2 left after" tone={tone}>{spare == null ? 'n/a' : `${fx(spare, 2)} kg`}</Item>
       </div>
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] text-muted-foreground">
-        <span className="flex items-center gap-1"><Radio className="size-3.5" />{s.los == null ? 'связь: н/д' : s.los ? 'мачта базы видна' : <span className="text-nogo">нет прямой связи с базой</span>}</span>
-        {s.sh && <span className="flex items-center gap-1"><Moon className="size-3.5" />в тени рельефа</span>}
-        {s.working && <span className="flex items-center gap-1"><Hammer className="size-3.5" />работа на точке</span>}
-        <span>высота {Math.round(s.z)} м</span>
+        <span className="flex items-center gap-1"><Radio className="size-3.5" />{s.los == null ? 'link: n/a' : s.los ? 'base mast in view' : <span className="text-nogo">no line of sight to base</span>}</span>
+        {s.sh && <span className="flex items-center gap-1"><Moon className="size-3.5" />in terrain shadow</span>}
+        {s.working && <span className="flex items-center gap-1"><Hammer className="size-3.5" />working at stop</span>}
+        <span>elevation {Math.round(s.z)} m</span>
       </div>
     </div>
   )

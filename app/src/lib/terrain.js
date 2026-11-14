@@ -3,12 +3,12 @@ export const M_PER_DEG = (3396190 * Math.PI) / 180;
 const D2R = Math.PI / 180;
 
 export const SLOPE_CLASSES = [
-  { max: 5, color: [46, 204, 113], label: '0-5°', note: 'лёгкий путь' },
-  { max: 10, color: [163, 217, 82], label: '5-10°', note: 'умеренно' },
-  { max: 15, color: [255, 209, 59], label: '10-15°', note: 'медленно, следить за опорой' },
-  { max: 20, color: [255, 140, 40], label: '15-20°', note: 'на пределе скафандра' },
-  { max: 30, color: [235, 59, 59], label: '20-30°', note: 'пешком нельзя' },
-  { max: 91, color: [176, 48, 190], label: 'больше 30°', note: 'обрыв, уступ' },
+  { max: 5, color: [46, 204, 113], label: '0-5°', note: 'easy going' },
+  { max: 10, color: [163, 217, 82], label: '5-10°', note: 'moderate' },
+  { max: 15, color: [255, 209, 59], label: '10-15°', note: 'slow, watch your footing' },
+  { max: 20, color: [255, 140, 40], label: '15-20°', note: 'at the suit limit' },
+  { max: 30, color: [235, 59, 59], label: '20-30°', note: 'not on foot' },
+  { max: 91, color: [176, 48, 190], label: 'over 30°', note: 'cliff, scarp' },
 ];
 export const slopeClass = (deg) => SLOPE_CLASSES.findIndex((c) => deg < c.max);
 

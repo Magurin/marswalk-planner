@@ -42,12 +42,12 @@ export function Profile() {
     const stepZ = [1, 2, 5, 10, 20, 50, 100, 200, 500].find((s) => (z1 - z0) / s <= 4) || 500
     for (let z = Math.ceil(z0 / stepZ) * stepZ; z <= z1; z += stepZ) {
       g.beginPath(); g.moveTo(m.l, Y(z)); g.lineTo(w - m.r, Y(z)); g.stroke()
-      g.textAlign = 'right'; g.fillText(`${z} м`, m.l - 8, Y(z) + 4)
+      g.textAlign = 'right'; g.fillText(`${z} m`, m.l - 8, Y(z) + 4)
     }
     // Pick the distance step from the room each label needs, so long routes never pile labels on top of each other.
     const plotW = w - m.l - m.r
     const stepD = [50, 100, 200, 500, 1e3, 2e3, 5e3, 1e4, 2e4, 5e4, 1e5, 2e5, 5e5, 1e6].find((s) => (s / R.dist) * plotW >= 64) || 1e6
-    const fmtD = (d) => (d === 0 ? '0' : stepD >= 1000 || d >= 1000 ? `${(d / 1000).toFixed(stepD < 1000 ? 1 : 0).replace('.', ',')} км` : `${d} м`)
+    const fmtD = (d) => (d === 0 ? '0' : stepD >= 1000 || d >= 1000 ? `${(d / 1000).toFixed(stepD < 1000 ? 1 : 0)} km` : `${d} m`)
     g.textAlign = 'center'
     for (let d = 0; d <= R.dist; d += stepD) g.fillText(fmtD(d), Math.max(X(d), m.l + 6), h - 6)
     const grad = g.createLinearGradient(0, m.t, 0, h - m.b)
@@ -115,26 +115,26 @@ export function Profile() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between gap-3 pt-2.5 pr-12 pl-4">
-        <h2 className="text-[13px] font-semibold whitespace-nowrap">Профиль высот</h2>
+        <h2 className="text-[13px] font-semibold whitespace-nowrap">Elevation profile</h2>
         <div className="flex items-center gap-3 text-[12.5px] text-muted-foreground">
-          <span className="max-xl:hidden">цвет линии - уклон</span>
-          <span className="flex items-center gap-1.5 max-sm:hidden"><span className="h-1 w-4 rounded bg-[#b54ad6]" />радиотень</span>
-          <span className="flex items-center gap-1.5 max-md:hidden"><span className="h-1 w-4 rounded bg-[#5b7bd6]" />тень</span>
+          <span className="max-xl:hidden">line color - slope</span>
+          <span className="flex items-center gap-1.5 max-sm:hidden"><span className="h-1 w-4 rounded bg-[#b54ad6]" />radio shadow</span>
+          <span className="flex items-center gap-1.5 max-md:hidden"><span className="h-1 w-4 rounded bg-[#5b7bd6]" />shade</span>
           <PlayControls compact />
         </div>
       </div>
       <div className="relative min-h-0 flex-1">
-        <canvas ref={ref} className="absolute inset-0 h-full w-full cursor-pointer" onMouseMove={move} onMouseLeave={leave} title="Нажмите, чтобы проиграть выход с этого места"
+        <canvas ref={ref} className="absolute inset-0 h-full w-full cursor-pointer" onMouseMove={move} onMouseLeave={leave} title="Click to replay the EVA from here"
           onClick={() => { if (info) setPlay({ t: info.s.t, playing: false }) }} />
         <div ref={head} className="pointer-events-none absolute top-5 bottom-6 left-0 w-0.5 bg-[#fb7185] shadow-[0_0_8px_#fb7185]" style={{ display: 'none' }} />
-        {!R && <div className="absolute inset-0 grid place-items-center text-[14px] text-muted-foreground">Профиль появится, когда в плане будет хотя бы одна точка.</div>}
+        {!R && <div className="absolute inset-0 grid place-items-center text-[14px] text-muted-foreground">The profile appears once the plan has at least one stop.</div>}
         {info && (
           <>
             <div className="pointer-events-none absolute top-5 bottom-6 w-px bg-white/70" style={{ left: info.x }} />
             <div className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-lg border bg-popover px-2.5 py-1.5 text-[12.5px] shadow-xl tabular"
               style={{ left: Math.min(Math.max(info.x, 110), info.w - 110), top: Math.max(info.y - 10, 70) }}>
-              <div className="font-semibold">{fx(info.s.d / 1000, 2)} км - высота {Math.round(info.s.z)} м - {fmtH(info.s.ltst)}</div>
-              <div className="text-muted-foreground">уклон {info.s.slope.toFixed(0)}°, крутизна пути {(info.s.grade * 100).toFixed(0)}%, {fx(info.s.v * 3.6, 1)} км/ч, {Math.round(info.s.w)} Вт{info.s.los === false ? ', нет связи' : ''}</div>
+              <div className="font-semibold">{fx(info.s.d / 1000, 2)} km - elevation {Math.round(info.s.z)} m - {fmtH(info.s.ltst)}</div>
+              <div className="text-muted-foreground">slope {info.s.slope.toFixed(0)}°, grade {(info.s.grade * 100).toFixed(0)}%, {fx(info.s.v * 3.6, 1)} km/h, {Math.round(info.s.w)} W{info.s.los === false ? ', no link' : ''}</div>
             </div>
           </>
         )}

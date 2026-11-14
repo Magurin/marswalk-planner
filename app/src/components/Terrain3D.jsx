@@ -18,7 +18,7 @@ const TILE_PROXY = import.meta.env.VITE_TILE_PROXY ?? 'http://127.0.0.1:8787'
 const CTX = ['JEZ_ctx_B_soc_008_orthoMosaic_6m_Eqc_latTs0_lon0', 13]
 const HIRISE = ['JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first_dd', 17]
 const WALKER_LAYER = 1
-const SKINS =[['photo', 'Снимок'], ['slope', 'Уклоны'], ['relief', 'Рельеф']]
+const SKINS =[['photo', 'Photo'], ['slope', 'Slopes'], ['relief', 'Relief']]
 
 // A tile that has not arrived in `ms` is skipped, so one stuck request cannot hold the whole photo.
 const loadImg = (src, ms = 12000) => new Promise((res) => {
@@ -429,12 +429,12 @@ function Scene({ exag, skin, focusReq, follow, onStatus, onInfo }) {
     const tell = () => onInfo({ ...info, roverReady: !!focusOn.rover, heliReady: !!focusOn.heli })
     if (rv) loadModel('models/perseverance.glb', 3).then(({ model, height }) => {
       if (api.current?.disposed) return
-      focusOn.rover = addProp({ model, size: height, shadow: 2.4, frac: 0.04, lon: rv.lon, lat: rv.lat, yaw: rv.yaw ?? 0, text: rv === now ? 'Perseverance' : `Perseverance · сол ${rv.sol}` })
+      focusOn.rover = addProp({ model, size: height, shadow: 2.4, frac: 0.04, lon: rv.lon, lat: rv.lat, yaw: rv.yaw ?? 0, text: rv === now ? 'Perseverance' : `Perseverance · sol ${rv.sol}` })
       tell()
     }).catch(() => { info.rover = null; info.failed = true; tell() })
     if (hl) loadModel('models/ingenuity.glb', 1.2).then(({ model, height }) => {
       if (api.current?.disposed) return
-      focusOn.heli = addProp({ model, size: height, shadow: 0.7, frac: 0.018, lon: hl.lon, lat: hl.lat, text: `Ingenuity · полёт ${hl.flight}` })
+      focusOn.heli = addProp({ model, size: height, shadow: 0.7, frac: 0.018, lon: hl.lon, lat: hl.lat, text: `Ingenuity · flight ${hl.flight}` })
       tell()
     }).catch(() => {})
     tell()
@@ -622,7 +622,7 @@ function Scene({ exag, skin, focusReq, follow, onStatus, onInfo }) {
       if (photo === 'done') { show(textures.photo); onStatus(null); return }
       // Until the photo arrives the shaded relief stands in, so the terrain is never blank.
       show(textures.photo ?? grid('relief'))
-      onStatus('Собираю снимок из тайлов...')
+      onStatus('Assembling photo from tiles...')
       if (photo === 'loading') return
       photo = 'loading'
       const tex = await photoTexture(box, (t) => {
@@ -631,7 +631,7 @@ function Scene({ exag, skin, focusReq, follow, onStatus, onInfo }) {
         if (wanted === 'photo') show(t)
       })
       if (gone()) { tex?.dispose(); return }
-      if (!tex) { photo = null; if (wanted === 'photo') { onStatus('Снимок недоступен, показан рельеф'); show(grid('relief')) } return }
+      if (!tex) { photo = null; if (wanted === 'photo') { onStatus('Photo unavailable, showing relief'); show(grid('relief')) } return }
       photo = 'done'; invalidate()
       if (wanted === 'photo') onStatus(null)
     }
@@ -660,7 +660,7 @@ export default function Terrain3D() {
   const [info, setInfo] = useState(null)
   const [focusReq, setFocusReq] = useState(null)
   const [follow, setFollow] = useState(true)
-  const cam = [['route', 'Маршрут'], ['base', 'База'], ...(info?.roverReady ? [['rover', 'Perseverance']] : []), ...(info?.heliReady ? [['heli', 'Ingenuity']] : [])]
+  const cam = [['route', 'Route'], ['base', 'Base'], ...(info?.roverReady ? [['rover', 'Perseverance']] : []), ...(info?.heliReady ? [['heli', 'Ingenuity']] : [])]
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') setView3d(false) }
     window.addEventListener('keydown', onKey)
@@ -672,20 +672,20 @@ export default function Terrain3D() {
     </div>
   )
   return (
-    <div className="fixed inset-0 z-[2500] bg-black" role="dialog" aria-label="3D-вид маршрута">
+    <div className="fixed inset-0 z-[2500] bg-black" role="dialog" aria-label="3D route view">
       <Scene exag={exag} skin={skin} focusReq={focusReq} follow={follow} onStatus={setStatus} onInfo={setInfo} />
       <div className="panel absolute top-3 left-3 flex flex-wrap items-center gap-3 px-3 py-2">
-        <div className="text-[14px] font-semibold">3D-вид маршрута</div>
+        <div className="text-[14px] font-semibold">3D route view</div>
         {seg(SKINS, skin, setSkin)}
-        <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">рельеф {seg([[1, '×1'], [2, '×2'], [3, '×3']], exag, setExag)}</div>
-        <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">камера
+        <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">relief {seg([[1, '×1'], [2, '×2'], [3, '×3']], exag, setExag)}</div>
+        <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground">camera
           <div className="flex overflow-hidden rounded-lg border text-[13px] text-foreground">
             {cam.map(([k, l]) => <button key={k} onClick={() => setFocusReq({ kind: k })} className="px-2.5 py-1 hover:bg-accent">{l}</button>)}
           </div>
         </div>
         {status && <span className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">{status.endsWith('...') && <Loader2 className="size-3.5 animate-spin" />}{status}</span>}
       </div>
-      <Button className="absolute top-3 right-3" onClick={() => setView3d(false)}><X />Закрыть</Button>
+      <Button className="absolute top-3 right-3" onClick={() => setView3d(false)}><X />Close</Button>
       <PlayBar follow={follow} setFollow={setFollow} />
     </div>
   )
@@ -702,22 +702,22 @@ function PlayBar({ follow, setFollow }) {
   if (!R) return null
   const end = R.hours * 3600
   const s = t != null ? sampleAt(R, t) : null
-  const status = !s ? 'астронавт на базе' : s.working ? `работа: ${stops[s.leg]?.name ?? `точка ${s.leg + 1}`}` : s.leg < stops.length ? `идёт к точке ${s.leg + 1}` : 'возвращается на базу'
+  const status = !s ? 'astronaut at base' : s.working ? `working: ${stops[s.leg]?.name ?? `stop ${s.leg + 1}`}` : s.leg < stops.length ? `walking to stop ${s.leg + 1}` : 'returning to base'
   return (
     <div className="panel absolute bottom-4 left-1/2 flex w-[min(640px,calc(100%-24px))] -translate-x-1/2 flex-col gap-2 px-3 py-2.5">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <div className="flex items-center gap-2">
           {t == null
-            ? <Button size="sm" onClick={() => setPlay({ t: 0, playing: true })}><Play />Запустить маршрут</Button>
+            ? <Button size="sm" onClick={() => setPlay({ t: 0, playing: true })}><Play />Play route</Button>
             : <PlayControls compact />}
         </div>
         <div className="min-w-0 text-[13px]">
           {s && <span className="font-semibold tabular">{fmtH(s.ltst)} </span>}
-          <span className="text-muted-foreground">{status}{t != null && <span className="tabular"> · {hm(t)} из {hm(end)}</span>}</span>
+          <span className="text-muted-foreground">{status}{t != null && <span className="tabular"> · {hm(t)} of {hm(end)}</span>}</span>
         </div>
-        <button onClick={() => setFollow(!follow)} title="Камера следует за астронавтом" className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px] ${follow ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}><Crosshair className="size-3.5" />Следить</button>
+        <button onClick={() => setFollow(!follow)} title="Camera follows the astronaut" className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px] ${follow ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}><Crosshair className="size-3.5" />Follow</button>
       </div>
-      {t != null && <input type="range" min={0} max={end} step={1} value={t} onChange={(e) => setPlay({ t: +e.target.value, playing: false })} className="w-full accent-[var(--primary)]" aria-label="Момент выхода" />}
+      {t != null && <input type="range" min={0} max={end} step={1} value={t} onChange={(e) => setPlay({ t: +e.target.value, playing: false })} className="w-full accent-[var(--primary)]" aria-label="EVA time" />}
     </div>
   )
 }

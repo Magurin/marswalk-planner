@@ -139,28 +139,28 @@ export function analyze(terrain, legs, stops, base, p, env) {
   }
 
   const checks = [];
-  const fx = (n, d = 0) => (+n).toFixed(d).replace('.', ',');
+  const fx = (n, d = 0) => (+n).toFixed(d);
   const add = (id, label, status, detail) => checks.push({ id, label, status, detail });
   const lvl = (bad, warn) => (bad ? 'nogo' : warn ? 'caution' : 'go');
-  add('slope', 'Крутизна склонов', lvl(maxSlope > p.maxSlopeDeg, maxSlope > p.maxSlopeDeg - 5),
-    `Самый крутой участок ${maxSlope.toFixed(0)}°, предел ${fx(p.maxSlopeDeg)}°`);
-  add('time', 'Ресурс скафандра', lvl(hours > p.evaLimitH, hours > p.evaLimitH * 0.85),
-    `${fx(hours, 1)} ч из ${fx(p.evaLimitH, p.evaLimitH % 1 ? 1 : 0)} ч`);
+  add('slope', 'Slope', lvl(maxSlope > p.maxSlopeDeg, maxSlope > p.maxSlopeDeg - 5),
+    `Steepest section ${maxSlope.toFixed(0)}°, limit ${fx(p.maxSlopeDeg)}°`);
+  add('time', 'Suit endurance', lvl(hours > p.evaLimitH, hours > p.evaLimitH * 0.85),
+    `${fx(hours, 1)} h of ${fx(p.evaLimitH, p.evaLimitH % 1 ? 1 : 0)} h`);
   const back = env.sunset - endLTST;
-  add('sun', 'Световой день', lvl(back < 0 || p.startLTST < env.sunrise, back < p.sunsetMarginMin / 60),
-    p.startLTST < env.sunrise ? 'Выход начинается до восхода Солнца' : back >= 0
-      ? `Возвращение за ${Math.round(back * 60)} мин до заката` : `Возвращение через ${Math.round(-back * 60)} мин после заката`);
-  add('walkback', 'Удаление от базы', lvl(far / 1000 > p.walkbackKm, far / 1000 > p.walkbackKm * 0.8),
-    `Самая дальняя точка в ${fx(far / 1000, 2)} км от базы, обратно напрямую около ${Math.round(walkbackH * 60)} мин`);
-  add('o2', 'Кислород', lvl(o2 + reserve > p.o2TankKg, o2 + reserve > p.o2TankKg * 0.9),
-    `Расход ${fx(o2, 2)} кг и резерв ${fx(reserve, 2)} кг из ${fx(p.o2TankKg, 2)} кг`);
-  if (shadowPct != null && shadowPct >= 1) add('shadow', 'Тени на пути', lvl(false, shadowPct > 25),
-    `${shadowPct.toFixed(0)}% времени в пути в тени рельефа` + (shadowPct > 25 ? ': холоднее и хуже видно грунт под ногами' : ''));
-  if (losPct != null) add('comms', 'Прямая видимость базы', lvl(losPct < 60, losPct < 90),
-    `С ${losPct.toFixed(0)}% маршрута видна мачта базы высотой ${fx(p.mastM)} м` + (losPct < 90 ? '. Нужен ретранслятор или точки сеанса связи' : ''));
-  if (tLo < Infinity) add('thermal', 'Температура воздуха', lvl(false, tLo < -75),
-    `От ${tLo.toFixed(0)} до ${tHi.toFixed(0)} °C во время выхода, оценка по MEDA в Езеро за сол ${env.wx.sol}`);
-  if (offDem > 1) add('dem', 'Покрытие моделью рельефа', 'caution', `${fx(offDem / 1000, 2)} км маршрута вне модели рельефа CTX`);
+  add('sun', 'Daylight', lvl(back < 0 || p.startLTST < env.sunrise, back < p.sunsetMarginMin / 60),
+    p.startLTST < env.sunrise ? 'The EVA starts before sunrise' : back >= 0
+      ? `Back ${Math.round(back * 60)} min before sunset` : `Back ${Math.round(-back * 60)} min after sunset`);
+  add('walkback', 'Distance from base', lvl(far / 1000 > p.walkbackKm, far / 1000 > p.walkbackKm * 0.8),
+    `Farthest point ${fx(far / 1000, 2)} km from base, about ${Math.round(walkbackH * 60)} min straight back`);
+  add('o2', 'Oxygen', lvl(o2 + reserve > p.o2TankKg, o2 + reserve > p.o2TankKg * 0.9),
+    `Use ${fx(o2, 2)} kg plus ${fx(reserve, 2)} kg reserve of ${fx(p.o2TankKg, 2)} kg`);
+  if (shadowPct != null && shadowPct >= 1) add('shadow', 'Shadow on the way', lvl(false, shadowPct > 25),
+    `${shadowPct.toFixed(0)}% of walking time in terrain shadow` + (shadowPct > 25 ? ': colder, and the ground is harder to see' : ''));
+  if (losPct != null) add('comms', 'Line of sight to base', lvl(losPct < 60, losPct < 90),
+    `The ${fx(p.mastM)} m base mast is visible from ${losPct.toFixed(0)}% of the route` + (losPct < 90 ? '. Needs a relay or planned comm stops' : ''));
+  if (tLo < Infinity) add('thermal', 'Air temperature', lvl(false, tLo < -75),
+    `${tLo.toFixed(0)} to ${tHi.toFixed(0)} °C during the EVA, estimated from Jezero MEDA data for sol ${env.wx.sol}`);
+  if (offDem > 1) add('dem', 'Terrain model coverage', 'caution', `${fx(offDem / 1000, 2)} km of the route is outside the CTX terrain model`);
 
   const order = { go: 0, caution: 1, nogo: 2 };
   const overall = checks.reduce((a, c) => (order[c.status] > order[a] ? c.status : a), 'go');

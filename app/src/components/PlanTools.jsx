@@ -16,10 +16,10 @@ export function PlanActions() {
   const { setPlay, setView3d, setBriefing, shareLink } = useStore.getState()
   return (
     <div className="grid grid-cols-4 gap-1.5 [&>button]:h-auto [&>button]:flex-col [&>button]:gap-1 [&>button]:py-2 [&>button]:text-[12px]">
-      <Button variant="secondary" disabled={!R} onClick={() => { const t = useStore.getState().play.t; setPlay({ t: t == null || t >= R.hours * 3600 ? 0 : t, playing: true }) }}><Play />Проиграть</Button>
-      <Button variant="secondary" onClick={() => setView3d(true)}><Box />3D-вид</Button>
-      <Button variant="secondary" disabled={!R} onClick={() => setBriefing(true)}><FileText />Брифинг</Button>
-      <Button variant="secondary" onClick={shareLink}><Link2 />Ссылка</Button>
+      <Button variant="secondary" disabled={!R} onClick={() => { const t = useStore.getState().play.t; setPlay({ t: t == null || t >= R.hours * 3600 ? 0 : t, playing: true }) }}><Play />Play</Button>
+      <Button variant="secondary" onClick={() => setView3d(true)}><Box />3D view</Button>
+      <Button variant="secondary" disabled={!R} onClick={() => setBriefing(true)}><FileText />Briefing</Button>
+      <Button variant="secondary" onClick={shareLink}><Link2 />Link</Button>
     </div>
   )
 }
@@ -38,12 +38,12 @@ export function AutoPlan() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" disabled={busy != null}>{busy != null ? <Loader2 className="animate-spin" /> : <Wand2 />}{busy != null ? `Считаю ${Math.round(busy * 100)}%` : 'Автоплан'}</Button>
+        <Button variant="outline" size="sm" disabled={busy != null}>{busy != null ? <Loader2 className="animate-spin" /> : <Wand2 />}{busy != null ? `Planning ${Math.round(busy * 100)}%` : 'Auto plan'}</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Автоплан выхода</DialogTitle>
-          <DialogDescription className="text-[13.5px]">Подберу, какие из отмеченных целей посетить и в каком порядке, чтобы увидеть как можно больше и уложиться в ресурс скафандра, световой день и кислород с резервом. Пути считаются по рельефу от текущей базы. Текущие точки маршрута будут заменены.</DialogDescription>
+          <DialogTitle>EVA auto planner</DialogTitle>
+          <DialogDescription className="text-[13.5px]">Picks which of the selected targets to visit and in what order, to see as much as possible within suit endurance, daylight and oxygen with reserve. Paths follow the terrain from the current base. The current route stops will be replaced.</DialogDescription>
         </DialogHeader>
         <div className="max-h-[46vh] space-y-1 overflow-y-auto pr-1">
           {inside.map((t) => (
@@ -54,12 +54,12 @@ export function AutoPlan() {
           ))}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <label className="flex items-center gap-2 text-[13.5px]">Работа на каждой цели
-            <Input type="number" min={0} max={180} step={5} value={minutes} onChange={(e) => setMinutes(Math.max(0, Math.min(180, +e.target.value || 0)))} className="h-8 w-20 tabular" />мин
+          <label className="flex items-center gap-2 text-[13.5px]">Work at each target
+            <Input type="number" min={0} max={180} step={5} value={minutes} onChange={(e) => setMinutes(Math.max(0, Math.min(180, +e.target.value || 0)))} className="h-8 w-20 tabular" />min
           </label>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setIds(chosen.length ? [] : inside.map((t) => t.id))}>{chosen.length ? 'Снять все' : 'Выбрать все'}</Button>
-            <Button size="sm" disabled={!chosen.length} onClick={() => { setOpen(false); run({ ids: chosen, minutes }) }}><Wand2 />Собрать маршрут</Button>
+            <Button variant="ghost" size="sm" onClick={() => setIds(chosen.length ? [] : inside.map((t) => t.id))}>{chosen.length ? 'Clear all' : 'Select all'}</Button>
+            <Button size="sm" disabled={!chosen.length} onClick={() => { setOpen(false); run({ ids: chosen, minutes }) }}><Wand2 />Build route</Button>
           </div>
         </div>
       </DialogContent>
@@ -82,12 +82,12 @@ export function StartWindow() {
   if (!legs.length) return null
   return (
     <div>
-      <button className="flex items-center gap-1.5 text-[12.5px] text-sky hover:underline" onClick={() => setOpen(!open)}><Clock4 className="size-3.5" />{open ? 'Скрыть подбор времени' : 'Подобрать лучшее время старта'}</button>
+      <button className="flex items-center gap-1.5 text-[12.5px] text-sky hover:underline" onClick={() => setOpen(!open)}><Clock4 className="size-3.5" />{open ? 'Hide start times' : 'Find best start time'}</button>
       {open && opts.length > 0 && (
         <div className="mt-2">
           <div className="flex h-16 items-end gap-px">
             {opts.map((o) => (
-              <button key={o.h} onClick={() => setParam('startLTST', o.h)} title={`${fmtH(o.h)}: ${VERDICT[o.overall].label}, тень ${o.shadowPct.toFixed(0)}%${o.tLo < Infinity ? `, от ${o.tLo.toFixed(0)} °C` : ''}`}
+              <button key={o.h} onClick={() => setParam('startLTST', o.h)} title={`${fmtH(o.h)}: ${VERDICT[o.overall].label}, shade ${o.shadowPct.toFixed(0)}%${o.tLo < Infinity ? `, low ${o.tLo.toFixed(0)} °C` : ''}`}
                 className={`relative flex-1 rounded-t-sm ${DOT[o.overall]} ${o.h === params.startLTST ? 'ring-2 ring-white' : 'opacity-75 hover:opacity-100'}`}
                 style={{ height: `${o.overall === 'nogo' ? 25 : o.overall === 'caution' ? 55 : 70 + 30 * (1 - Math.min(1, o.shadowPct / 40))}%` }} />
             ))}
@@ -95,8 +95,8 @@ export function StartWindow() {
           <div className="mt-1 flex justify-between text-[11.5px] text-muted-foreground tabular"><span>{fmtH(opts[0].h)}</span><span>{fmtH(opts.at(-1).h)}</span></div>
           {best && (
             <div className="mt-1.5 flex items-center justify-between gap-2 text-[12.5px]">
-              <span>Лучше всего: <b className="tabular">{fmtH(best.h)}</b> <span className={TEXT[best.overall]}>{VERDICT[best.overall].label}</span>{best.shadowPct >= 1 && <span className="text-muted-foreground">, тень {best.shadowPct.toFixed(0)}%</span>}</span>
-              {best.h !== params.startLTST && <Button size="xs" variant="secondary" onClick={() => setParam('startLTST', best.h)}>Поставить</Button>}
+              <span>Best: <b className="tabular">{fmtH(best.h)}</b> <span className={TEXT[best.overall]}>{VERDICT[best.overall].label}</span>{best.shadowPct >= 1 && <span className="text-muted-foreground">, shade {best.shadowPct.toFixed(0)}%</span>}</span>
+              {best.h !== params.startLTST && <Button size="xs" variant="secondary" onClick={() => setParam('startLTST', best.h)}>Use</Button>}
             </div>
           )}
         </div>
@@ -110,11 +110,11 @@ export function Variants() {
   const R = useStore((s) => s.result)
   const { saveVariant, loadVariant, deleteVariant, setGhost, renameVariant } = useStore.getState()
   const cols = [
-    ['Расст.', (v) => `${fx(v.sum.dist / 1000, 1)} км`, (v) => v.sum.dist],
-    ['Время', (v) => `${fx(v.sum.hours, 1)} ч`, (v) => v.sum.hours],
-    ['Подъём', (v) => `${Math.round(v.sum.climb)} м`, (v) => v.sum.climb],
+    ['Dist.', (v) => `${fx(v.sum.dist / 1000, 1)} km`, (v) => v.sum.dist],
+    ['Time', (v) => `${fx(v.sum.hours, 1)} h`, (v) => v.sum.hours],
+    ['Climb', (v) => `${Math.round(v.sum.climb)} m`, (v) => v.sum.climb],
     ['O2', (v) => `${fx(v.sum.o2, 2)}`, (v) => v.sum.o2],
-    ['Связь', (v) => (v.sum.losPct == null ? 'н/д' : `${Math.round(v.sum.losPct)}%`), (v) => -(v.sum.losPct ?? 0)],
+    ['Link', (v) => (v.sum.losPct == null ? 'n/a' : `${Math.round(v.sum.losPct)}%`), (v) => -(v.sum.losPct ?? 0)],
   ]
   // Highlight the best value in each column.
   const best = cols.map(([, , k]) => Math.min(...variants.map(k)))
@@ -128,10 +128,10 @@ export function Variants() {
             <div key={v.id} className="px-3 py-2 hover:bg-accent/50" onMouseEnter={() => setGhost(v.id)} onMouseLeave={() => setGhost(null)}>
               <div className="flex items-center gap-1.5">
                 <span className={`size-2 shrink-0 rounded-full ${DOT[v.sum.overall]}`} title={VERDICT[v.sum.overall].label} />
-                <input value={v.name} onChange={(e) => renameVariant(v.id, e.target.value)} className="min-w-0 flex-1 truncate bg-transparent font-medium outline-none" aria-label="Название варианта" />
-                <span className="shrink-0 text-[11.5px] whitespace-nowrap text-muted-foreground">{v.sum.stops} {plural(v.sum.stops, ['точка', 'точки', 'точек'])}, до {fmtH(v.sum.endLTST)}</span>
-                <button className="shrink-0 rounded p-1 hover:bg-accent" title="Открыть вариант" aria-label="Открыть вариант" onClick={() => loadVariant(v.id)}><Upload className="size-3.5" /></button>
-                <button className="shrink-0 rounded p-1 hover:bg-accent hover:text-nogo" title="Удалить вариант" aria-label="Удалить вариант" onClick={() => deleteVariant(v.id)}><Trash2 className="size-3.5" /></button>
+                <input value={v.name} onChange={(e) => renameVariant(v.id, e.target.value)} className="min-w-0 flex-1 truncate bg-transparent font-medium outline-none" aria-label="Variant name" />
+                <span className="shrink-0 text-[11.5px] whitespace-nowrap text-muted-foreground">{v.sum.stops} {plural(v.sum.stops, ['stop', 'stops'])}, until {fmtH(v.sum.endLTST)}</span>
+                <button className="shrink-0 rounded p-1 hover:bg-accent" title="Open variant" aria-label="Open variant" onClick={() => loadVariant(v.id)}><Upload className="size-3.5" /></button>
+                <button className="shrink-0 rounded p-1 hover:bg-accent hover:text-nogo" title="Delete variant" aria-label="Delete variant" onClick={() => deleteVariant(v.id)}><Trash2 className="size-3.5" /></button>
               </div>
               <div className="mt-1 grid grid-cols-5 gap-1 pl-3.5 tabular">
                 {cols.map(([h, f, k], i) => (
@@ -146,8 +146,8 @@ export function Variants() {
         </div>
       )}
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" disabled={!R} onClick={() => saveVariant()}><Save />Сохранить текущий как вариант</Button>
-        {variants.length > 0 && <span className="text-[12px] text-muted-foreground">наведите на строку - маршрут покажется на карте</span>}
+        <Button variant="outline" size="sm" disabled={!R} onClick={() => saveVariant()}><Save />Save current as variant</Button>
+        {variants.length > 0 && <span className="text-[12px] text-muted-foreground">hover a row to see its route on the map</span>}
       </div>
     </div>
   )

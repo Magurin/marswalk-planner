@@ -23,14 +23,14 @@ function LayerRow({ def }) {
         </label>
         <Tooltip>
           <TooltipTrigger asChild>
-            <button className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label={`Подробнее: ${def.name}`}><Info className="size-4" /></button>
+            <button className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label={`About: ${def.name}`}><Info className="size-4" /></button>
           </TooltipTrigger>
           <TooltipContent side="right" className="max-w-64 text-[13px]">{def.desc}</TooltipContent>
         </Tooltip>
       </div>
       {st.on && !def.vector && (
         <div className="mt-2.5 flex items-center gap-3 pl-[52px]">
-          <Slider value={[st.opacity]} min={0} max={1} step={0.05} onValueChange={([opacity]) => setLayer(def.id, { opacity })} aria-label={`Непрозрачность: ${def.name}`} />
+          <Slider value={[st.opacity]} min={0} max={1} step={0.05} onValueChange={([opacity]) => setLayer(def.id, { opacity })} aria-label={`Opacity: ${def.name}`} />
           <span className="w-9 text-right text-[12.5px] tabular text-muted-foreground">{Math.round(st.opacity * 100)}%</span>
         </div>
       )}
@@ -44,7 +44,7 @@ function LayerRow({ def }) {
           ))}
         </div>
       )}
-      {st.on && def.id === 'los' && <p className="mt-2 pl-[52px] text-[12.5px] text-muted-foreground"><span className="mr-1.5 inline-block size-3 rounded-sm bg-[#7828a0] align-[-1px]" />нет радиосвязи с базой</p>}
+      {st.on && def.id === 'los' && <p className="mt-2 pl-[52px] text-[12.5px] text-muted-foreground"><span className="mr-1.5 inline-block size-3 rounded-sm bg-[#7828a0] align-[-1px]" />no radio link to the base</p>}
       {st.on && def.id === 'reach' && <ReachLegend />}
     </div>
   )
@@ -58,7 +58,7 @@ function ReachLegend() {
       {REACH_CLASSES.map((c) => (
         <div key={c.label} className="flex items-center gap-2"><span className="size-3 shrink-0 rounded-sm ring-1 ring-black/40" style={{ background: `rgb(${c.color})` }} />{c.label}</div>
       ))}
-      <p className="text-muted-foreground">Туда, {work} мин работы и обратно. Доля самого жёсткого из ресурсов: время, световой день, кислород.{busy && ' Считаю...'}</p>
+      <p className="text-muted-foreground">Out, {work} min of work and back. Share of the tightest resource: time, daylight or oxygen.{busy && ' Computing...'}</p>
     </div>
   )
 }
@@ -68,7 +68,7 @@ export function LayersPanel() {
     <div className="space-y-5">
       {LAYER_GROUPS.map((g) => (
         <Section key={g.title} title={g.title}>
-          {g.exclusive && <p className="-mt-1 mb-2 px-1 text-[12.5px] text-muted-foreground">Снимки закрывают друг друга, поэтому включается только один.</p>}
+          {g.exclusive && <p className="-mt-1 mb-2 px-1 text-[12.5px] text-muted-foreground">These images cover each other, so only one can be on.</p>}
           <div className="space-y-1">{g.layers.map((d) => <LayerRow key={d.id} def={d} />)}</div>
         </Section>
       ))}
@@ -87,26 +87,26 @@ export function SunControl() {
   const sun = sunAt(sunLTST, mt.decl, SITE.lat)
   const up = sun.el > 0
   return (
-    <Section title="Солнце и тени">
+    <Section title="Sun and shadows">
       <div className="rounded-xl border bg-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-2xl font-semibold tabular">{fmtH(sunLTST)}</div>
-            <div className="text-[12.5px] text-muted-foreground">истинное местное солнечное время</div>
+            <div className="text-[12.5px] text-muted-foreground">local true solar time</div>
           </div>
           <div className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] font-medium ${up ? 'bg-amber-400/15 text-amber-200' : 'bg-sky-400/15 text-sky-200'}`}>
             {up ? <Sun className="size-4" /> : <Moon className="size-4" />}
-            {up ? `высота ${sun.el.toFixed(0)}°, азимут ${sun.az.toFixed(0)}°` : 'Солнце за горизонтом'}
+            {up ? `elevation ${sun.el.toFixed(0)}°, azimuth ${sun.az.toFixed(0)}°` : 'Sun below the horizon'}
           </div>
         </div>
-        <Slider className="mt-4" value={[sunLTST]} min={5} max={19} step={0.25} onValueChange={([v]) => { setSunLTST(v); if (!shadeOn) setLayer('shade', { on: true }) }} aria-label="Местное солнечное время для теней" />
+        <Slider className="mt-4" value={[sunLTST]} min={5} max={19} step={0.25} onValueChange={([v]) => { setSunLTST(v); if (!shadeOn) setLayer('shade', { on: true }) }} aria-label="Local solar time for shadows" />
         <div className="mt-1.5 flex justify-between text-[12px] text-muted-foreground tabular"><span>05:00</span><span>12:00</span><span>19:00</span></div>
         <div className="mt-3 grid grid-cols-3 gap-2 [&>button]:h-auto [&>button]:min-h-8 [&>button]:px-2 [&>button]:py-1 [&>button]:leading-tight [&>button]:whitespace-normal">
-          <Button variant="secondary" size="sm" onClick={() => setSunLTST(Math.round(mt.ltst * 4) / 4)}>Сейчас</Button>
-          <Button variant="secondary" size="sm" onClick={() => setSunLTST(start)}>Начало выхода</Button>
-          <Button variant="secondary" size="sm" onClick={() => setSunLTST(Math.round(mt.sunset * 4) / 4 - 0.5)}><Sunrise className="rotate-180" />Перед закатом</Button>
+          <Button variant="secondary" size="sm" onClick={() => setSunLTST(Math.round(mt.ltst * 4) / 4)}>Now</Button>
+          <Button variant="secondary" size="sm" onClick={() => setSunLTST(start)}>EVA start</Button>
+          <Button variant="secondary" size="sm" onClick={() => setSunLTST(Math.round(mt.sunset * 4) / 4 - 0.5)}><Sunrise className="rotate-180" />Before sunset</Button>
         </div>
-        {!shadeOn && <p className="mt-3 text-[12.5px] text-muted-foreground">Ползунок сразу включает слой теней.</p>}
+        {!shadeOn && <p className="mt-3 text-[12.5px] text-muted-foreground">Moving the slider turns on the shadow layer.</p>}
       </div>
     </Section>
   )

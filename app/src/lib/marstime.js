@@ -50,10 +50,10 @@ export function seasonName(ls, north = true) {
   // Season of the chosen hemisphere, in Russian: early / middle / late part of it.
   const seasons = north ? [0, 1, 2, 3] : [2, 3, 0, 1];
   const NAMES = [
-    ['ранняя весна', 'середина весны', 'поздняя весна'],
-    ['раннее лето', 'середина лета', 'позднее лето'],
-    ['ранняя осень', 'середина осени', 'поздняя осень'],
-    ['ранняя зима', 'середина зимы', 'поздняя зима'],
+    ['early spring', 'mid spring', 'late spring'],
+    ['early summer', 'mid summer', 'late summer'],
+    ['early autumn', 'mid autumn', 'late autumn'],
+    ['early winter', 'mid winter', 'late winter'],
   ];
   return NAMES[seasons[Math.floor(ls / 90) % 4]][Math.floor((ls % 90) / 30)];
 }

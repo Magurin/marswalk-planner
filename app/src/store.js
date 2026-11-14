@@ -14,10 +14,11 @@ const FEEDS = {
   meda: 'https://mars.nasa.gov/rss/api/?feed=weather&category=mars2020&feedtype=json',
   rems: 'https://mars.nasa.gov/rss/api/?feed=weather&category=msl&feedtype=json',
 }
-// v3: names are in Russian now, so an old English plan is not restored.
-const STORE_KEY = 'marswalk.plan.v3'
+// v4: names are in English now, so an old Russian plan is not restored.
+const STORE_KEY = 'marswalk.plan.v4'
 const UI_KEY = 'marswalk.ui.v1'
-const VARIANTS_KEY = 'marswalk.variants.v1'
+// v2: same reason as STORE_KEY v4.
+const VARIANTS_KEY = 'marswalk.variants.v2'
 // Layers panel 340 + plan panel 400 + gaps leave under ~560 px of map below this width.
 export const roomForBothPanels = () => window.innerWidth >= 1320
 const loadJson = (k, def) => { try { return JSON.parse(localStorage.getItem(k) || 'null') ?? def } catch { return def } }
@@ -34,7 +35,7 @@ function decodePlan(code) {
   const bin = atob(code.replace(/-/g, '+').replace(/_/g, '/'))
   const j = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))))
   return {
-    base: { lon: j.b[0], lat: j.b[1], name: j.b[2] || 'База' },
+    base: { lon: j.b[0], lat: j.b[1], name: j.b[2] || 'Base' },
     stops: (j.s || []).map(([lon, lat, name, minutes]) => ({ lon, lat, name, minutes: minutes ?? 20 })),
     params: { ...DEFAULTS, ...j.p }, routing: j.r || 'terrain',
   }
@@ -79,7 +80,7 @@ function plan(s) {
   }
   const result = analyze(terrain, legs, [...stops, null], [base.lon, base.lat], params, planEnv(s))
   if (failed.length) {
-    result.checks.unshift({ id: 'route', label: 'Прокладка маршрута', status: 'nogo', detail: `Нет проходимого пути с уклоном до ${fx(params.maxSlopeDeg)}° на ${failed.length > 1 ? 'участках' : 'участке'} ${failed.map((i) => i + 1).join(', ')}. Показана прямая линия.` })
+    result.checks.unshift({ id: 'route', label: 'Route planning', status: 'nogo', detail: `No walkable path with slopes up to ${fx(params.maxSlopeDeg)}° on ${failed.length > 1 ? 'legs' : 'leg'} ${failed.map((i) => i + 1).join(', ')}. Showing a straight line.` })
     result.overall = 'nogo'
   }
   // The emergency check needs the return field around this very base, which arrives from the worker a moment later.
@@ -186,8 +187,8 @@ export const useStore = create((set, get) => {
     toggleFullscreen: () => {
       if (document.fullscreenElement) return void document.exitFullscreen?.().catch(() => {})
       const req = document.documentElement.requestFullscreen?.()
-      if (!req) return void toast.warning('Полноэкранный режим здесь недоступен')
-      req.catch(() => toast.warning('Браузер не разрешил полноэкранный режим', { description: 'Откройте приложение в обычной вкладке браузера и нажмите F.' }))
+      if (!req) return void toast.warning('Full screen is not available here')
+      req.catch(() => toast.warning('The browser blocked full screen', { description: 'Open the app in a regular browser tab and press F.' }))
     },
     setPickBase: (pickBase) => set({ pickBase }),
     setSunLTST: (sunLTST) => set({ sunLTST }),
@@ -198,19 +199,19 @@ export const useStore = create((set, get) => {
       return { layers }
     }),
 
-    setBase: (pt, name = 'Своя база') => {
+    setBase: (pt, name = 'Custom base') => {
       const base = { lon: pt.lon, lat: pt.lat, name }
       routeCache.clear()
       commit({ base, viewshed: viewshedFor(base, get().params), pickBase: false })
-      toast.success('База перенесена', { description: name })
+      toast.success('Base moved', { description: name })
     },
     addStop: (pt, name, minutes = 20) => {
-      const stops = [...get().stops, { lon: pt.lon, lat: pt.lat, name: name || `Точка ${get().stops.length + 1}`, minutes }]
+      const stops = [...get().stops, { lon: pt.lon, lat: pt.lat, name: name || `Stop ${get().stops.length + 1}`, minutes }]
       commit({ stops })
       const r = get().result
-      toast(`Точка ${stops.length} добавлена`, {
-        description: r ? `${name || 'Своя точка'} - маршрут ${fx(r.dist / 1000, 2)} км, ${r.overall === 'go' ? 'можно идти' : r.overall === 'caution' ? 'идти с осторожностью' : 'идти нельзя'}` : undefined,
-        action: { label: 'Отменить', onClick: () => get().removeStop(stops.length - 1) },
+      toast(`Stop ${stops.length} added`, {
+        description: r ? `${name || 'Custom stop'} - route ${fx(r.dist / 1000, 2)} km, ${r.overall === 'go' ? 'go' : r.overall === 'caution' ? 'caution' : 'no-go'}` : undefined,
+        action: { label: 'Undo', onClick: () => get().removeStop(stops.length - 1) },
       })
     },
     updateStop: (i, patch) => commit({ stops: get().stops.map((s, k) => (k === i ? { ...s, ...patch } : s)) }),
@@ -238,7 +239,7 @@ export const useStore = create((set, get) => {
       routeCache.clear()
       commit({ base, viewshed: viewshedFor(base, get().params), stops: p.stops.map(([id, minutes]) => ({ lon: by(id).lon, lat: by(id).lat, name: by(id).name, minutes })) })
       get().fitPlan()
-      toast(`Загружен пример: ${p.label}`)
+      toast(`Example loaded: ${p.label}`)
     },
     fitPlan: () => {
       const { base, stops } = get()
@@ -251,14 +252,14 @@ export const useStore = create((set, get) => {
       if (!R) return
       const step = Math.max(1, Math.floor(R.samples.length / 300))
       const v = {
-        id: Date.now().toString(36), name: name || `Вариант ${variants.length + 1}`,
+        id: Date.now().toString(36), name: name || `Variant ${variants.length + 1}`,
         plan: { base, stops, params, routing },
         sum: { dist: R.dist, hours: R.hours, climb: R.climb, o2: R.o2, losPct: R.losPct, shadowPct: R.shadowPct, overall: R.overall, stops: stops.length, endLTST: R.endLTST },
         line: R.samples.filter((_, i) => i % step === 0 || i === R.samples.length - 1).map((p) => [+p.lat.toFixed(6), +p.lon.toFixed(6)]),
       }
       const list = [...variants, v]
       set({ variants: list }); saveJson(VARIANTS_KEY, list)
-      toast.success('Вариант сохранён', { description: v.name })
+      toast.success('Variant saved', { description: v.name })
     },
     loadVariant: (id) => {
       const v = get().variants.find((x) => x.id === id)
@@ -277,8 +278,8 @@ export const useStore = create((set, get) => {
       if (!base) return
       const url = `${location.origin}${location.pathname}#plan=${encodePlan(get())}`
       history.replaceState(null, '', url)
-      try { await navigator.clipboard.writeText(url); toast.success('Ссылка на план скопирована', { description: `${stops.length} ${plural(stops.length, ['точка', 'точки', 'точек'])}, база ${base.name}` }) }
-      catch { toast('Ссылка на план в адресной строке', { description: 'Браузер не дал скопировать её автоматически.' }) }
+      try { await navigator.clipboard.writeText(url); toast.success('Plan link copied', { description: `${stops.length} ${plural(stops.length, ['stop', 'stops'])}, base ${base.name}` }) }
+      catch { toast('Plan link is in the address bar', { description: 'The browser did not allow copying it automatically.' }) }
     },
 
     // ----- auto planner -----
@@ -286,7 +287,7 @@ export const useStore = create((set, get) => {
       const s = get()
       // A target the base stands on is visited anyway: as a stop it would only add a zero-length leg.
       const cands = s.targets.filter((t) => ids.includes(t.id) && s.terrain.inside(t.lon, t.lat) && Terrain.dist([t.lon, t.lat], [s.base.lon, s.base.lat]) > 50).map(({ id, lon, lat }) => ({ id, lon, lat }))
-      if (!cands.length) return toast.warning('Нет целей для плана', { description: 'Выберите хотя бы одну научную цель внутри модели рельефа.' })
+      if (!cands.length) return toast.warning('No targets to plan', { description: 'Select at least one science target inside the terrain model.' })
       set({ autoBusy: 0 })
       try {
         const slacks = [1, 0.96, 0.92, 0.88, 0.84, 0.8, 0.75, 0.7]
@@ -306,16 +307,16 @@ export const useStore = create((set, get) => {
         }
         if (!pick) {
           commit({ stops: prevStops })
-          return toast.error('Ни одна цель не помещается в выход', { description: r.outside.length === cands.length ? 'Все выбранные цели дальше предела удаления от базы.' : 'Не хватает времени, светового дня или кислорода даже на одну цель. Перенесите базу или ослабьте допущения.' })
+          return toast.error('No target fits in the EVA', { description: r.outside.length === cands.length ? 'All selected targets are beyond the walk-back limit from the base.' : 'Not enough time, daylight or oxygen for even one target. Move the base or relax the assumptions.' })
         }
         get().fitPlan()
         const R = get().result, n = pick.order.length, skipped = cands.length - n
         const left = cands.map((c) => c.id).filter((id) => !pick.order.includes(id)).map((id) => by(id).name)
-        toast.success(`Автоплан: ${n} ${plural(n, ['цель', 'цели', 'целей'])} из ${cands.length}`, {
-          description: `${fx(R.hours, 1)} ч, ${fx(R.o2, 2)} кг кислорода, ${VERDICT[R.overall].label.toLowerCase()}.` + (skipped ? ` Не ${plural(skipped, ['поместилась', 'поместились', 'поместились'])}: ${left.slice(0, 3).join(', ')}${skipped > 3 ? ` и ещё ${skipped - 3}` : ''}.` : ''),
+        toast.success(`Auto plan: ${n} of ${cands.length} ${plural(cands.length, ['target', 'targets'])}`, {
+          description: `${fx(R.hours, 1)} h, ${fx(R.o2, 2)} kg of oxygen, ${VERDICT[R.overall].label.toLowerCase()}.` + (skipped ? ` Did not fit: ${left.slice(0, 3).join(', ')}${skipped > 3 ? ` and ${skipped - 3} more` : ''}.` : ''),
         })
       } catch (e) {
-        toast.error('Автоплан не удался', { description: e.message })
+        toast.error('Auto plan failed', { description: e.message })
       } finally {
         set({ autoBusy: null })
       }
@@ -336,14 +337,14 @@ export const useStore = create((set, get) => {
           return { ...t, lon: p.lon, lat: p.lat, elev: p.elev, atSol: p.sol }
         })
         const h = m20.heli[m20.heli.length - 1]
-        targets.push({ id: 'ingenuity', name: 'Последняя площадка Ingenuity', lon: h.lon, lat: h.lat, elev: h.elev, src: `Положение вертолёта после полёта ${h.flight}, сол ${h.sol}`, sci: 'Первый летательный аппарат на другой планете остался здесь после 72 полётов. Осмотр повреждённых лопастей и пыли на корпусе - уникальная инженерная задача.' })
+        targets.push({ id: 'ingenuity', name: "Ingenuity's final airfield", lon: h.lon, lat: h.lat, elev: h.elev, src: `Helicopter position after flight ${h.flight}, sol ${h.sol}`, sci: 'The first aircraft on another planet came to rest here after 72 flights. Inspecting its damaged rotor blades and the dust on its body is a unique engineering task.' })
         set({ terrain, m20, weather, targets })
 
         const shared = planFromHash()
         const saved = shared || loadJson(STORE_KEY, null)
         const mt = get().mt
         set({ sunLTST: mt.sun.el > 5 ? Math.round(mt.ltst * 4) / 4 : DEFAULTS.startLTST })
-        if (shared) toast.info('Открыт план по ссылке', { description: `База ${shared.base.name}, ${shared.stops.length} ${plural(shared.stops.length, ['точка', 'точки', 'точек'])}` })
+        if (shared) toast.info('Opened a shared plan', { description: `Base ${shared.base.name}, ${shared.stops.length} ${plural(shared.stops.length, ['stop', 'stops'])}` })
         if (saved?.base) {
           const params = { ...DEFAULTS, ...saved.params }
           commit({ base: saved.base, stops: saved.stops || [], params, routing: saved.routing || 'terrain', viewshed: terrain.viewshed(saved.base.lon, saved.base.lat, params.mastM), ready: true })
@@ -378,7 +379,7 @@ export const useStore = create((set, get) => {
         const known = m20.waypoints.length
         const traverse = wp.length > known ? [...m20.traverse, { sol: wp[known].sol, c: wp.slice(known - 1).map((p) => [p.lon, p.lat]) }] : m20.traverse
         set({ m20: { ...m20, waypoints: wp, traverse }, live: { ...get().live, rover: true } })
-        if (wp.length > known) toast.info('Perseverance переместился', { description: `Новые координаты по сол ${wp[wp.length - 1].sol}` })
+        if (wp.length > known) toast.info('Perseverance has moved', { description: `New position as of sol ${wp[wp.length - 1].sol}` })
       }).catch(() => {})
     },
 
@@ -391,7 +392,7 @@ export const useStore = create((set, get) => {
       const a = document.createElement('a')
       a.href = URL.createObjectURL(new Blob([JSON.stringify({ type: 'FeatureCollection', features: f }, null, 1)], { type: 'application/geo+json' }))
       a.download = 'marswalk-plan.geojson'; a.click(); URL.revokeObjectURL(a.href)
-      toast.success('План сохранён', { description: 'marswalk-plan.geojson' })
+      toast.success('Plan saved', { description: 'marswalk-plan.geojson' })
     },
   }
 })
@@ -406,9 +407,9 @@ export const usePlayT = () => useStore((s) => {
 })
 
 export const VERDICT = {
-  go: { label: 'МОЖНО', long: 'Все проверки пройдены', color: 'var(--go)' },
-  caution: { label: 'ОСТОРОЖНО', long: 'Идти с осторожностью', color: 'var(--caution)' },
-  nogo: { label: 'НЕЛЬЗЯ', long: 'Выход запрещён', color: 'var(--nogo)' },
+  go: { label: 'GO', long: 'All checks passed', color: 'var(--go)' },
+  caution: { label: 'CAUTION', long: 'Proceed with caution', color: 'var(--caution)' },
+  nogo: { label: 'NO-GO', long: 'EVA not allowed', color: 'var(--nogo)' },
 }
 
 // Handy in the browser console while developing.

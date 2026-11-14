@@ -11,9 +11,9 @@ import { Button } from '@/components/ui/button'
 
 const VERDICT_BG = { go: '#16a34a', caution: '#ca8a04', nogo: '#dc2626' }
 const PARAMS = [
-  ['flatSpeedKmh', 'Скорость по ровному', 'км/ч'], ['massKg', 'Масса со скафандром', 'кг'], ['maxSlopeDeg', 'Предельный уклон', '°'], ['evaLimitH', 'Ресурс скафандра', 'ч'],
-  ['o2TankKg', 'Кислород', 'кг'], ['o2ReserveMin', 'Резерв кислорода', 'мин'], ['stationW', 'Мощность на точках', 'Вт'], ['walkbackKm', 'Предел удаления', 'км'],
-  ['sunsetMarginMin', 'Запас до заката', 'мин'], ['mastM', 'Мачта связи', 'м'],
+  ['flatSpeedKmh', 'Speed on flat ground', 'km/h'], ['massKg', 'Mass with suit', 'kg'], ['maxSlopeDeg', 'Max slope', '°'], ['evaLimitH', 'Suit endurance', 'h'],
+  ['o2TankKg', 'Oxygen', 'kg'], ['o2ReserveMin', 'Oxygen reserve', 'min'], ['stationW', 'Power at stops', 'W'], ['walkbackKm', 'Walk-back limit', 'km'],
+  ['sunsetMarginMin', 'Margin before sunset', 'min'], ['mastM', 'Radio mast', 'm'],
 ]
 
 // Shaded relief of the route area drawn from the CTX terrain model, with the route on top. Needs no map tiles, so it always prints.
@@ -68,10 +68,10 @@ function RouteMap({ R, base, stops, terrain }) {
     const bar = [100, 200, 500, 1000, 2000, 5000].find((m) => m / mpp >= 110) || 5000
     g.fillStyle = 'rgba(255,255,255,0.85)'; g.fillRect(14, H - 44, bar / mpp + 24, 32)
     g.fillStyle = '#111'; g.fillRect(26, H - 22, bar / mpp, 4); g.font = '600 13px Geist Variable, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'alphabetic'
-    g.fillText(bar >= 1000 ? `${bar / 1000} км` : `${bar} м`, 26, H - 28)
+    g.fillText(bar >= 1000 ? `${bar / 1000} km` : `${bar} m`, 26, H - 28)
     g.fillStyle = 'rgba(255,255,255,0.85)'; g.beginPath(); g.arc(W - 34, 36, 22, 0, 7); g.fill()
     g.fillStyle = '#111'; g.beginPath(); g.moveTo(W - 34, 18); g.lineTo(W - 42, 42); g.lineTo(W - 34, 36); g.lineTo(W - 26, 42); g.closePath(); g.fill()
-    g.textAlign = 'center'; g.fillText('С', W - 34, 54)
+    g.textAlign = 'center'; g.fillText('N', W - 34, 54)
   }, [R, base, stops, terrain])
   return <canvas ref={ref} className="block w-full rounded-lg border border-zinc-300" />
 }
@@ -89,10 +89,10 @@ function ProfileChart({ R }) {
     const X = (d) => m.l + (d / R.dist) * (W - m.l - m.r), Y = (z) => H - m.b - ((z - z0) / (z1 - z0)) * (H - m.t - m.b)
     g.font = '13px Geist Variable, sans-serif'; g.fillStyle = '#444'; g.strokeStyle = '#ddd'
     const stepZ = [1, 2, 5, 10, 20, 50, 100, 200, 500].find((s) => (z1 - z0) / s <= 4) || 500
-    for (let z = Math.ceil(z0 / stepZ) * stepZ; z <= z1; z += stepZ) { g.beginPath(); g.moveTo(m.l, Y(z)); g.lineTo(W - m.r, Y(z)); g.stroke(); g.textAlign = 'right'; g.fillText(`${z} м`, m.l - 8, Y(z) + 4) }
+    for (let z = Math.ceil(z0 / stepZ) * stepZ; z <= z1; z += stepZ) { g.beginPath(); g.moveTo(m.l, Y(z)); g.lineTo(W - m.r, Y(z)); g.stroke(); g.textAlign = 'right'; g.fillText(`${z} m`, m.l - 8, Y(z) + 4) }
     const stepD = [100, 200, 500, 1e3, 2e3, 5e3].find((s) => (s / R.dist) * (W - m.l - m.r) >= 70) || 5e3
     g.textAlign = 'center'
-    for (let d = 0; d <= R.dist; d += stepD) g.fillText(d >= 1000 || stepD >= 1000 ? `${fx(d / 1000, stepD < 1000 ? 1 : 0)} км` : `${d} м`, X(d), H - 8)
+    for (let d = 0; d <= R.dist; d += stepD) g.fillText(d >= 1000 || stepD >= 1000 ? `${fx(d / 1000, stepD < 1000 ? 1 : 0)} km` : `${d} m`, X(d), H - 8)
     g.fillStyle = '#f5e2d3'; g.beginPath(); g.moveTo(X(0), H - m.b); S.forEach((s) => g.lineTo(X(s.d), Y(s.z))); g.lineTo(X(R.dist), H - m.b); g.fill()
     g.lineWidth = 3
     for (let i = 1; i < S.length; i++) { g.strokeStyle = `rgb(${SLOPE_CLASSES[Math.max(0, slopeClass(S[i].slope))].color})`; g.beginPath(); g.moveTo(X(S[i - 1].d), Y(S[i - 1].z)); g.lineTo(X(S[i].d), Y(S[i].z)); g.stroke() }
@@ -113,34 +113,34 @@ export function Briefing() {
 function BriefingDoc({ R }) {
   const setOpen = useStore((s) => s.setBriefing)
   const { base, stops, params, terrain, mt } = useStore.getState()
-  const [made] = useState(() => new Date().toLocaleString('ru-RU'))
+  const [made] = useState(() => new Date().toLocaleString('en-US'))
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [setOpen])
   const v = VERDICT[R.overall]
-  const rows = [{ name: `Старт: ${base.name}`, arrive: null, depart: params.startLTST, dist: 0, o2: 0 }]
+  const rows = [{ name: `Start: ${base.name}`, arrive: null, depart: params.startLTST, dist: 0, o2: 0 }]
   R.arrivals.forEach((a, i) => {
     const s = R.samples.find((x) => x.t >= a.arrive - 0.5) || R.samples.at(-1)
-    rows.push({ name: i < stops.length ? stops[i].name : 'Возвращение на базу', n: i < stops.length ? i + 1 : null, arrive: a.ltstArrive, depart: i < stops.length ? a.ltstDepart : null, dist: a.dist, o2: s.e * O2_KG_PER_J, work: stops[i]?.minutes })
+    rows.push({ name: i < stops.length ? stops[i].name : 'Return to base', n: i < stops.length ? i + 1 : null, arrive: a.ltstArrive, depart: i < stops.length ? a.ltstDepart : null, dist: a.dist, o2: s.e * O2_KG_PER_J, work: stops[i]?.minutes })
   })
   const order = { nogo: 0, caution: 1, go: 2 }
   return createPortal(
-    <div className="briefing fixed inset-0 z-[3000] overflow-auto bg-zinc-200 text-zinc-900" role="dialog" aria-label="Брифинг выхода">
+    <div className="briefing fixed inset-0 z-[3000] overflow-auto bg-zinc-200 text-zinc-900" role="dialog" aria-label="EVA briefing">
       <div className="no-print sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-zinc-300 bg-white/95 px-5 py-3">
-        <div className="text-[15px] font-semibold">Брифинг выхода</div>
+        <div className="text-[15px] font-semibold">EVA briefing</div>
         <div className="flex gap-2">
-          <Button onClick={() => window.print()}><Printer />Печать или PDF</Button>
-          <Button variant="outline" className="border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => setOpen(false)}><X />Закрыть</Button>
+          <Button onClick={() => window.print()}><Printer />Print or PDF</Button>
+          <Button variant="outline" className="border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-100" onClick={() => setOpen(false)}><X />Close</Button>
         </div>
       </div>
       <article className="paper mx-auto my-6 max-w-[1040px] space-y-6 bg-white p-10 shadow-xl">
         <header className="flex items-start justify-between gap-6 border-b border-zinc-300 pb-5">
           <div>
-            <div className="text-[13px] tracking-wide text-zinc-500 uppercase">Брифинг выхода на поверхность - кратер Езеро</div>
-            <h1 className="mt-1 text-[28px] font-bold leading-tight">{base.name}: {stops.length} {plural(stops.length, ['точка', 'точки', 'точек'])}, {fx(R.dist / 1000, 2)} км</h1>
-            <div className="mt-1 text-[14px] text-zinc-600 tabular">Сол {mt.sol}, старт {fmtH(params.startLTST)} по местному солнечному времени, возврат {fmtH(R.endLTST)}, закат {fmtH(mt.sunset)}. Составлен {made}.</div>
+            <div className="text-[13px] tracking-wide text-zinc-500 uppercase">Surface EVA briefing - Jezero crater</div>
+            <h1 className="mt-1 text-[28px] font-bold leading-tight">{base.name}: {stops.length} {plural(stops.length, ['stop', 'stops'])}, {fx(R.dist / 1000, 2)} km</h1>
+            <div className="mt-1 text-[14px] text-zinc-600 tabular">Sol {mt.sol}, start {fmtH(params.startLTST)} local solar time, back {fmtH(R.endLTST)}, sunset {fmtH(mt.sunset)}. Generated {made}.</div>
           </div>
           <div className="shrink-0 rounded-xl px-5 py-3 text-center text-white" style={{ background: VERDICT_BG[R.overall] }}>
             <div className="text-[24px] font-bold tracking-wide">{v.label}</div>
@@ -149,35 +149,35 @@ function BriefingDoc({ R }) {
         </header>
 
         <section className="grid grid-cols-6 gap-3 text-center tabular">
-          {[['Расстояние', `${fx(R.dist / 1000, 2)} км`], ['Длительность', `${fx(R.hours, 1)} ч`], ['Подъём / спуск', `${Math.round(R.climb)} / ${Math.round(R.descent)} м`], ['Кислород', `${fx(R.o2, 2)} из ${fx(params.o2TankKg, 2)} кг`], ['Связь с базой', R.losPct == null ? 'н/д' : `${Math.round(R.losPct)}% пути`], ['В тени', R.shadowPct == null ? 'н/д' : `${Math.round(R.shadowPct)}% пути`]].map(([k, val]) => (
+          {[['Distance', `${fx(R.dist / 1000, 2)} km`], ['Duration', `${fx(R.hours, 1)} h`], ['Climb / descent', `${Math.round(R.climb)} / ${Math.round(R.descent)} m`], ['Oxygen', `${fx(R.o2, 2)} of ${fx(params.o2TankKg, 2)} kg`], ['Link to base', R.losPct == null ? 'n/a' : `${Math.round(R.losPct)}% of route`], ['In shade', R.shadowPct == null ? 'n/a' : `${Math.round(R.shadowPct)}% of route`]].map(([k, val]) => (
             <div key={k} className="rounded-lg border border-zinc-200 px-2 py-2.5"><div className="text-[11.5px] text-zinc-500">{k}</div><div className="mt-0.5 text-[15px] font-semibold">{val}</div></div>
           ))}
         </section>
 
         <section>
-          <h2 className="mb-2 text-[16px] font-semibold">Схема маршрута</h2>
+          <h2 className="mb-2 text-[16px] font-semibold">Route map</h2>
           <RouteMap R={R} base={base} stops={stops} terrain={terrain} />
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-zinc-600">
-            {SLOPE_CLASSES.slice(0, 5).map((c) => <span key={c.label} className="flex items-center gap-1.5"><span className="h-1.5 w-5 rounded" style={{ background: `rgb(${c.color})` }} />уклон {c.label}</span>)}
-            <span>H - база, цифры - точки, ! - худшая точка для аварийного возврата. Рельеф: стереомодель MRO CTX 20 м.</span>
+            {SLOPE_CLASSES.slice(0, 5).map((c) => <span key={c.label} className="flex items-center gap-1.5"><span className="h-1.5 w-5 rounded" style={{ background: `rgb(${c.color})` }} />slope {c.label}</span>)}
+            <span>H - base, numbers - stops, ! - worst point for emergency return. Terrain: MRO CTX 20 m stereo model.</span>
           </div>
         </section>
 
         <section className="break-inside-avoid">
-          <h2 className="mb-2 text-[16px] font-semibold">Профиль высот</h2>
+          <h2 className="mb-2 text-[16px] font-semibold">Elevation profile</h2>
           <ProfileChart R={R} />
         </section>
 
         <section className="break-inside-avoid">
-          <h2 className="mb-2 text-[16px] font-semibold">Расписание</h2>
+          <h2 className="mb-2 text-[16px] font-semibold">Schedule</h2>
           <table className="w-full border-collapse text-[13.5px] tabular [&_td]:px-2 [&_th]:px-2 [&_td:first-child]:pl-0 [&_th:first-child]:pl-0">
-            <thead><tr className="border-b-2 border-zinc-300 text-left text-[12px] text-zinc-500"><th className="py-1.5">#</th><th>Точка</th><th className="text-right">Прибытие</th><th className="text-right">Работа</th><th className="text-right">Уход</th><th className="text-right">От старта</th><th className="text-right">O2 израсходовано</th></tr></thead>
+            <thead><tr className="border-b-2 border-zinc-300 text-left text-[12px] text-zinc-500"><th className="py-1.5">#</th><th>Stop</th><th className="text-right">Arrive</th><th className="text-right">Work</th><th className="text-right">Depart</th><th className="text-right">From start</th><th className="text-right">O2 used</th></tr></thead>
             <tbody>
               {rows.map((r, i) => (
                 <tr key={i} className="border-b border-zinc-200">
                   <td className="py-1.5 font-semibold">{r.n ?? 'H'}</td><td>{r.name}</td>
-                  <td className="text-right">{r.arrive == null ? '-' : fmtH(r.arrive)}</td><td className="text-right">{r.work ? `${r.work} мин` : '-'}</td>
-                  <td className="text-right">{r.depart == null ? '-' : fmtH(r.depart)}</td><td className="text-right">{fx(r.dist / 1000, 2)} км</td><td className="text-right">{fx(r.o2, 2)} кг</td>
+                  <td className="text-right">{r.arrive == null ? '-' : fmtH(r.arrive)}</td><td className="text-right">{r.work ? `${r.work} min` : '-'}</td>
+                  <td className="text-right">{r.depart == null ? '-' : fmtH(r.depart)}</td><td className="text-right">{fx(r.dist / 1000, 2)} km</td><td className="text-right">{fx(r.o2, 2)} kg</td>
                 </tr>
               ))}
             </tbody>
@@ -185,7 +185,7 @@ function BriefingDoc({ R }) {
         </section>
 
         <section className="break-inside-avoid">
-          <h2 className="mb-2 text-[16px] font-semibold">Проверки готовности</h2>
+          <h2 className="mb-2 text-[16px] font-semibold">Readiness checks</h2>
           <div className="grid grid-cols-2 gap-2">
             {[...R.checks].sort((a, b) => order[a.status] - order[b.status]).map((c) => (
               <div key={c.id} className="flex gap-2.5 rounded-lg border border-zinc-200 px-3 py-2">
@@ -198,13 +198,13 @@ function BriefingDoc({ R }) {
 
         <section className="grid grid-cols-2 gap-6 break-inside-avoid text-[12.5px]">
           <div>
-            <h2 className="mb-2 text-[16px] font-semibold">Допущения модели</h2>
-            <table className="w-full tabular"><tbody>{PARAMS.map(([k, label, unit]) => <tr key={k} className="border-b border-zinc-100"><td className="py-1 text-zinc-600">{label}</td><td className="text-right font-medium">{String(params[k]).replace('.', ',')} {unit}</td></tr>)}</tbody></table>
+            <h2 className="mb-2 text-[16px] font-semibold">Model assumptions</h2>
+            <table className="w-full tabular"><tbody>{PARAMS.map(([k, label, unit]) => <tr key={k} className="border-b border-zinc-100"><td className="py-1 text-zinc-600">{label}</td><td className="text-right font-medium">{params[k]} {unit}</td></tr>)}</tbody></table>
           </div>
           <div>
-            <h2 className="mb-2 text-[16px] font-semibold">Источники данных</h2>
+            <h2 className="mb-2 text-[16px] font-semibold">Data sources</h2>
             <ul className="space-y-1 text-zinc-600">{SOURCES.map(([a, b]) => <li key={a}><b className="text-zinc-800">{a}</b>: {b}</li>)}</ul>
-            <p className="mt-3 text-zinc-500">Помощь в планировании по открытым данным NASA, а не полётные правила.</p>
+            <p className="mt-3 text-zinc-500">A planning aid built on open NASA data, not flight rules.</p>
           </div>
         </section>
       </article>
