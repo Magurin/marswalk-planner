@@ -104,7 +104,7 @@ The linter is oxlint. Only the tile cache has tests (tile path validation and th
 - **Stops** are added by clicking the map or a science target. Each has a work time on site. Markers can be dragged and stops reordered.
 - **The verdict** is recomputed after every change. Every model assumption (pace, mass, tank and so on) is editable in the plan panel.
 - **The Sun slider** sets the time for the shadow layer; the start time of the walk is set separately.
-- **Hotkeys:** `Ctrl+K` - search and commands, `F` - fullscreen, `H` - hide all panels, `P` - elevation profile, `Esc` - close.
+- **Hotkeys:** `F` - fullscreen, `H` - hide all panels, `P` - elevation profile, `Esc` - close.
 - Below 1024 px the side panels become drawers with a button bar at the bottom.
 
 What is stored and where:

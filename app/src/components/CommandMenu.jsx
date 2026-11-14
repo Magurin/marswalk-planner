@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { MapPin, Layers, Route, Download, Trash2, Home, Crosshair, Sun, Eye, EyeOff, Globe } from 'lucide-react'
 import { useStore } from '@/store'
 import { LAYERS, PRESETS } from '@/lib/catalog'
@@ -10,14 +9,6 @@ export function CommandMenu() {
   const targets = useStore((s) => s.targets)
   const layers = useStore((s) => s.layers)
   const ready = useStore((s) => s.ready)
-
-  useEffect(() => {
-    const onKey = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setOpen(!useStore.getState().cmdOpen) }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [setOpen])
 
   const run = (fn) => () => { setOpen(false); fn(useStore.getState()) }
   if (!ready) return null

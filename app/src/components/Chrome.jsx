@@ -4,7 +4,6 @@ import { useStore } from '@/store'
 import { fmtH, seasonName } from '@/lib/marstime'
 import { fx } from '@/lib/fmt'
 import { Button } from '@/components/ui/button'
-import { Kbd } from '@/components/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 const VERDICT_DOT = { go: 'bg-go', caution: 'bg-caution', nogo: 'bg-nogo' }
@@ -67,7 +66,7 @@ export function TopBar() {
         <Button variant={ui.left && !aiOpen ? 'secondary' : 'ghost'} className={`hidden h-9 rounded-xl px-3 text-[13.5px] lg:flex ${ui.left && !aiOpen ? 'text-primary' : ''}`} aria-pressed={ui.left && !aiOpen} onClick={() => { if (aiOpen) useStore.getState().setLeftTab('layers'); else togglePanel('left') }}><Layers />Слои</Button>
         <Button variant={aiOpen ? 'secondary' : 'ghost'} className={`hidden h-9 rounded-xl px-3 text-[13.5px] lg:flex ${aiOpen ? 'text-primary' : ''}`} aria-pressed={aiOpen} onClick={() => (aiOpen ? togglePanel('left') : openAssistant())}><Sparkles />Помощник</Button>
         <Button variant="ghost" className="hidden h-9 w-52 shrink justify-start gap-2 rounded-xl border px-3 text-[13.5px] text-muted-foreground xl:flex" onClick={() => setCmdOpen(true)}>
-          <Search className="size-4" />Поиск...<Kbd className="ml-auto">Ctrl K</Kbd>
+          <Search className="size-4" />Поиск...
         </Button>
         <IconBtn label="Поиск" className="xl:hidden" onClick={() => setCmdOpen(true)}><Search /></IconBtn>
       </div>
