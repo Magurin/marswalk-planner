@@ -61,67 +61,107 @@ async function main() {
     cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {})
   })
 
-  console.log('warming up tiles, reach map and 3D...')
+  const ALL = await run(() => window.S.getState().targets.map((t) => t.id))
+  const WIDE = { lat: 18.44, lon: 77.43, zoom: 11.6 }
+  const fitStops = () => run(({ b, st }) => window.S.getState().flyTo({ points: [b, ...st].map((p) => [p.lat, p.lon]) }), { b: BASE, st: STOPS })
+
+  console.log('warming up tiles, layers, reach map, auto planner and 3D...')
   await run(() => { const s = window.S.getState(); s.setHidden(true); s.setLayer('track', { on: false }) })
-  await run(({ b }) => window.S.getState().flyTo({ lat: b.lat, lon: b.lon, zoom: 13 }), { b: BASE })
+  await run((w) => window.S.getState().flyTo(w), WIDE)
   await sleep(6000)
-  await run(({ b, st }) => window.S.getState().flyTo({ points: [b, ...st].map((p) => [p.lat, p.lon]) }), { b: BASE, st: STOPS })
+  await fitStops()
   await sleep(6000)
-  await run(() => window.S.getState().setLayer('reach', { on: true }))
-  await sleep(8000)
-  await run(() => window.S.getState().setLayer('reach', { on: false }))
-  await run(({ st }) => { const s = window.S.getState(); st.forEach((p) => s.addStop(p, p.name, p.minutes)) }, { st: STOPS })
-  await sleep(3000)
+  for (const id of ['slope', 'ground', 'shade', 'los', 'reach']) {
+    await run((id) => window.S.getState().setLayer(id, { on: true }), id)
+    await sleep(id === 'reach' ? 8000 : 2500)
+    await run((id) => window.S.getState().setLayer(id, { on: false }), id)
+  }
+  // The auto planner once off camera, so its legs are routed and cached; then its route in 3D, so those tiles load too.
+  await run((ids) => window.S.getState().runAutoPlan({ ids, minutes: 20 }), ALL)
   await run(() => window.S.getState().setView3d(true))
   await sleep(12000)
   await run(() => { const s = window.S.getState(); s.setView3d(false); s.clearStops() })
-  await run(({ b }) => window.S.getState().flyTo({ lat: b.lat, lon: b.lon, zoom: 13 }), { b: BASE })
+  await run(({ st }) => { const s = window.S.getState(); st.forEach((p) => s.addStop(p, p.name, p.minutes)) }, { st: STOPS })
+  await run(() => { const s = window.S.getState(); s.setHidden(false); if (!s.ui.right) s.togglePanel('right') })
+  await sleep(2000)
+  await run(() => { const s = window.S.getState(); s.setHidden(true); s.clearStops() })
+  await run((w) => window.S.getState().flyTo(w), WIDE)
   await sleep(4000)
 
   await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 92, maxWidth: W, maxHeight: H, everyNthFrame: 1 })
   await sleep(500)
   const shots = []
-  const shot = async (seconds, action) => { const t = now(); await action(); await sleep(Math.max(0, t + seconds - now()) * 1000); shots.push([t, now()]) }
+  // speed: capture the shot that many times longer than its slot and speed it up in the cut.
+  // until: an action that ends the capture when it resolves (the slot is then filled from whatever length it took).
+  const shot = async (i, action, { speed = 1, until = null } = {}) => {
+    const t = now()
+    await action()
+    if (until) await until()
+    await sleep(Math.max(0, t + CUT[i] * speed - now()) * 1000)
+    shots.push([t, now()])
+  }
+  const layer = (id, on) => run(({ id, on }) => window.S.getState().setLayer(id, { on }), { id, on })
 
   console.log('shot 1: Jezero overview')
-  await shot(CUT[0], async () => {
-    await sleep(1200)
-    await run(({ b, st }) => window.S.getState().flyTo({ points: [b, ...st].map((p) => [p.lat, p.lon]) }), { b: BASE, st: STOPS })
-  })
+  // Wide view first, the Perseverance traverse drawn over it, then down to the base.
+  await shot(0, async () => { await sleep(600); await layer('track', true); await sleep(1300); await fitStops() })
   console.log('shot 2: targets and route')
-  await shot(CUT[1], async () => {
-    await sleep(400)
+  await shot(1, async () => {
+    await sleep(300)
     await run(({ p }) => window.S.getState().addStop(p, p.name, p.minutes), { p: STOPS[0] })
-    await sleep(1600)
+    await sleep(1300)
     await run(({ p }) => window.S.getState().addStop(p, p.name, p.minutes), { p: STOPS[1] })
   })
-  console.log('shot 3: verdict')
-  await shot(CUT[2], async () => {
+  console.log('shot 3: HiRISE slopes and THEMIS ground')
+  await shot(2, async () => {
+    await layer('track', false)
+    await layer('slope', true)
+    await sleep(1700)
+    await layer('slope', false)
+    await layer('ground', true)
+  })
+  console.log('shot 4: shadows and radio')
+  await shot(3, async () => {
+    await layer('ground', false)
+    // Low morning sun, where the shadows are long enough to read.
+    await run(() => window.S.getState().setSunLTST(6.6))
+    await layer('shade', true)
+    for (let h = 6.6; h <= 8.4; h += 0.3) { await run((h) => window.S.getState().setSunLTST(h), h); await sleep(260) }
+    await layer('shade', false)
+    await layer('los', true)
+  })
+  console.log('shot 5: verdict')
+  await shot(4, async () => {
+    await layer('los', false)
     await run(() => { const s = window.S.getState(); s.setHidden(false); if (!s.ui.right) s.togglePanel('right') })
+    await sleep(2300)
+    // Down to the readiness checks, where the new ground and radiation lines are.
+    await run(() => [...document.querySelectorAll('h2,h3,div')].find((e) => e.textContent.trim() === 'Readiness checks')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   })
-  console.log('shot 4: reach map')
-  await shot(CUT[3], async () => {
-    await run(({ b }) => { const s = window.S.getState(); s.setHidden(true); s.setLayer('reach', { on: true }); s.flyTo({ lat: b.lat, lon: b.lon, zoom: 13.5 }) }, { b: BASE })
+  console.log('shot 6: reach map')
+  await shot(5, async () => {
+    await run(({ b }) => { const s = window.S.getState(); s.setHidden(true); s.setLayer('reach', { on: true }); s.flyTo({ lat: b.lat, lon: b.lon, zoom: 12.3 }) }, { b: BASE })
   })
-  await run(() => { const s = window.S.getState(); s.setLayer('reach', { on: false }); s.setView3d(true) })
-  await sleep(5000)
-  console.log('shot 5: 3D replay')
-  // The replay is captured longer than its slot and sped up in the cut.
-  await shot(CUT[4] * 1.6, async () => {
-    await run(() => window.S.getState().setPlay({ t: 0, playing: true, speed: 900 }))
-  })
+  console.log('shot 7: auto planner')
+  await shot(6, async () => {
+    await run(() => { const s = window.S.getState(); s.setLayer('reach', { on: false }); s.clearStops() })
+  }, { until: () => run((ids) => window.S.getState().runAutoPlan({ ids, minutes: 20 }), ALL).then(() => sleep(900)) })
+  await run(() => window.S.getState().setView3d(true))
+  await sleep(6000)
+  console.log('shot 8: 3D replay with the title')
+  await shot(7, async () => {
+    await run(() => window.S.getState().setPlay({ t: 0, playing: true, speed: 1500 }))
+    // Name and link over the last two seconds of the slot.
+    await sleep(Math.max(0, CUT[7] - 2.2) * 1.8 * 1000)
+    await run(() => {
+      const d = document.createElement('div')
+      d.innerHTML = '<div style="font-size:64px;font-weight:700;letter-spacing:-1px">Marswalk Planner</div><div style="font-size:32px;font-weight:600;color:#ffc9a8;margin-top:8px">marswalk-planner-one.vercel.app</div>'
+      Object.assign(d.style, { position: 'fixed', left: '64px', bottom: '72px', zIndex: 99999, color: '#f5ede8', fontFamily: 'Inter,Segoe UI,system-ui,sans-serif', textShadow: '0 2px 18px rgba(0,0,0,.85)', opacity: 0, transition: 'opacity .5s' })
+      document.body.appendChild(d)
+      requestAnimationFrame(() => (d.style.opacity = 1))
+    })
+  }, { speed: 1.8 })
   await cdp.send('Page.stopScreencast')
-
-  console.log('shot 6: title card')
-  await page.setContent(`<!doctype html><html><body style="margin:0;width:${W}px;height:${H}px;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,#2a130c,#0b0b0d 70%);font-family:Inter,Segoe UI,system-ui,sans-serif;color:#f5ede8">
-    <div style="text-align:center">
-      <div style="width:92px;height:92px;margin:0 auto 36px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#f08a5d,#b83b1e 60%,#5a1a0c)"></div>
-      <div style="font-size:96px;font-weight:700;letter-spacing:-2px">Marswalk Planner</div>
-      <div style="font-size:38px;opacity:.75;margin-top:18px">EVA route planning at Jezero Crater, Mars</div>
-      <div style="font-size:32px;color:#f08a5d;margin-top:56px">marswalk-planner-one.vercel.app</div>
-    </div></body></html>`)
-  await sleep(500)
-  const title = await page.screenshot({ type: 'jpeg', quality: 95 })
   await browser.close()
 
   // Retime each shot to its cut length: the output frame at time k/FPS shows the latest
@@ -138,7 +178,6 @@ async function main() {
     }
     console.log(`  shot ${i + 1}: ${(t1 - t0).toFixed(1)} s captured -> ${CUT[i]} s`)
   })
-  for (let k = 0; k < Math.round(CUT[5] * FPS); k++) out.push(title)
   console.log(`${frames.length} frames captured, ${out.length} output frames`)
 
   const mp4 = path.join(OUT, 'marswalk-demo.mp4')

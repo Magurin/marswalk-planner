@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "audio"
 MODEL = "gpt-4o-mini-tts"
 VOICE = sys.argv[1] if len(sys.argv) > 1 else "onyx"
-LEAD, GAP = 0.3, 0.35  # seconds of silence before the first phrase and between phrases
+LEAD, GAP = 0.25, 0.25  # seconds of silence before the first phrase and between phrases
 
 STYLE = (
     "Confident documentary narrator of a short NASA mission video. American English. "
@@ -32,12 +32,14 @@ STYLE = (
 
 # One phrase per shot, in order.
 SHOTS = [
-    "Jezero Crater, from real NASA data. Where can a human walk?",
-    "Pick science targets - the route steers around dangerous slopes.",
-    "Every plan is checked instantly: slopes, oxygen, suit time, daylight and comms.",
-    "The reach map shows where you can go - and still make it back.",
-    "Then replay the whole walk in 3D, step by step.",
-    "Marswalk Planner. Plan the walk before you take it.",
+    "Jezero Crater, from real NASA data. Can a human walk here?",
+    "Pick targets - the route avoids steep slopes.",
+    "One-meter HiRISE terrain. Loose sand from THEMIS.",
+    "Shadows for any hour. Radio dead zones.",
+    "An instant verdict: oxygen, daylight, comms, radiation.",
+    "The reach map: where you can go and get back.",
+    "Or let it pick the most science that fits.",
+    "Then walk it in 3D. Marswalk Planner.",
 ]
 
 

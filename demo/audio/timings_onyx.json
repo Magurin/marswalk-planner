@@ -1,32 +1,42 @@
 [
   {
-    "start": 0.3,
-    "length": 4.708,
-    "text": "Jezero Crater, from real NASA data. Where can a human walk?"
+    "start": 0.25,
+    "length": 3.838,
+    "text": "Jezero Crater, from real NASA data. Can a human walk here?"
   },
   {
-    "start": 5.358,
-    "length": 3.82,
-    "text": "Pick science targets - the route steers around dangerous slopes."
+    "start": 4.338,
+    "length": 3.1,
+    "text": "Pick targets - the route avoids steep slopes."
   },
   {
-    "start": 9.528,
-    "length": 6.45,
-    "text": "Every plan is checked instantly: slopes, oxygen, suit time, daylight and comms."
+    "start": 7.688,
+    "length": 3.938,
+    "text": "One-meter HiRISE terrain. Loose sand from THEMIS."
   },
   {
-    "start": 16.328,
-    "length": 3.37,
-    "text": "The reach map shows where you can go - and still make it back."
+    "start": 11.876,
+    "length": 2.984,
+    "text": "Shadows for any hour. Radio dead zones."
   },
   {
-    "start": 20.048,
-    "length": 3.21,
-    "text": "Then replay the whole walk in 3D, step by step."
+    "start": 15.11,
+    "length": 4.626,
+    "text": "An instant verdict: oxygen, daylight, comms, radiation."
   },
   {
-    "start": 23.608,
-    "length": 3.654,
-    "text": "Marswalk Planner. Plan the walk before you take it."
+    "start": 19.986,
+    "length": 2.972,
+    "text": "The reach map: where you can go and get back."
+  },
+  {
+    "start": 23.208,
+    "length": 2.562,
+    "text": "Or let it pick the most science that fits."
+  },
+  {
+    "start": 26.02,
+    "length": 3.04,
+    "text": "Then walk it in 3D. Marswalk Planner."
   }
 ]

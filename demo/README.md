@@ -1,8 +1,8 @@
 # 30-second demo
 
-One story: pick targets - get a route and a verdict - see where you can reach - replay the walk in 3D.
+Eight quick shots, no title card: pick targets - see the terrain the route reads - get a verdict - see where you can reach - let the planner choose - walk it in 3D. The name and link sit over the last two seconds of the 3D shot.
 
-- **Video:** `out/marswalk-demo.mp4`, 30 s, 1920x1080, made by [`record.mjs`](record.mjs). Not in git: rebuild it with the steps below.
+- **Video:** `out/marswalk-demo.mp4`, 30 s, 1920x1080, made by [`record.mjs`](record.mjs). `out/marswalk-demo-youtube.mp4` is the same at a lower bitrate (under 10 MB) for uploading. Not in git: rebuild them with the steps below.
 - **Voiceover:** [`audio/voiceover_onyx.wav`](audio/voiceover_onyx.wav), made by [`voiceover.py`](voiceover.py). The video is cut to the voice, not the other way round.
 - **AI disclosure:** the voiceover is AI-generated speech (OpenAI `gpt-4o-mini-tts`, voice `onyx`); the footage is a plain screen recording of the app. The recorder writes this note into the MP4 metadata (`title`, `comment`, `description` and the audio track title), as Space Apps requires for AI audio.
 
@@ -12,14 +12,16 @@ Each shot runs from the start of its voiceover line to the start of the next one
 
 | Shot | Time, s | On screen | Voice |
 | --- | --- | --- | --- |
-| 1 | 0.0-5.4 | Jezero map, zoom from the wide view to the delta and the Three Forks base | Jezero Crater, from real NASA data. Where can a human walk? |
-| 2 | 5.4-9.5 | Two stops added, Wildcat then Nukshak: the route bends around the delta scarp by itself | Pick science targets - the route steers around dangerous slopes. |
-| 3 | 9.5-16.3 | Plan panel: green GO verdict, distance, oxygen, energy, radio link | Every plan is checked instantly: slopes, oxygen, suit time, daylight and comms. |
-| 4 | 16.3-20.0 | The reach map layer turns on | The reach map shows where you can go - and still make it back. |
-| 5 | 20.0-23.6 | 3D view with the replay running: the astronaut walks the route | Then replay the whole walk in 3D, step by step. |
-| 6 | 23.6-30.0 | Title card: Marswalk Planner + live demo link | Marswalk Planner. Plan the walk before you take it. |
+| 1 | 0.0-4.3 | Wide Jezero view, the Perseverance traverse drawn over it, then down to the Three Forks base | Jezero Crater, from real NASA data. Can a human walk here? |
+| 2 | 4.3-7.7 | Two stops added, Wildcat then Nukshak: the route bends around the delta scarp by itself | Pick targets - the route avoids steep slopes. |
+| 3 | 7.7-11.9 | Slope layer (CTX sharpened by HiRISE 1 m), then the loose ground layer (THEMIS thermal inertia) | One-meter HiRISE terrain. Loose sand from THEMIS. |
+| 4 | 11.9-15.1 | Cast shadows as the morning sun climbs, then the radio shadow of the base mast | Shadows for any hour. Radio dead zones. |
+| 5 | 15.1-20.0 | Plan panel with the GO verdict, then it scrolls down to the readiness checks | An instant verdict: oxygen, daylight, comms, radiation. |
+| 6 | 20.0-23.2 | Reach map around the base | The reach map: where you can go and get back. |
+| 7 | 23.2-26.0 | Auto planner over every target: picks three stops (captured at full length and sped up) | Or let it pick the most science that fits. |
+| 8 | 26.0-30.0 | 3D replay of the auto plan, the name and link fading in | Then walk it in 3D. Marswalk Planner. |
 
-Each phrase is also a separate file, `audio/shot1_onyx.wav` ... `shot6_onyx.wav`, if that is easier to place in the edit.
+Each phrase is also a separate file, `audio/shot1_onyx.wav` ... `shot8_onyx.wav`, if that is easier to place in the edit.
 
 ## Ready-made plans
 
@@ -39,9 +41,7 @@ Why this route: longer loops around the delta almost always get "no-go" for radi
 
 ## Cut
 
-AI assistant, auto planner, shadows and the Sun slider, radio shadow, best start time, emergency return, variants, export, briefing, Mars clock, weather, Perseverance images, editing assumptions.
-
-The auto planner is cut on purpose: with every target selected it builds 6 stops over 12 km, and that plan gets "no-go" for comms (the planner only checks time, daylight, oxygen and passability). In a demo that looks like a bug.
+AI assistant, best start time, emergency return, variants, export, briefing, Mars clock, weather, Perseverance images, editing assumptions.
 
 ## Making the video
 
@@ -64,7 +64,7 @@ cd demo && npm install && npm run record
 - The first command makes the voiceover and `audio/timings_onyx.json`; the recorder cuts each shot to those timings. Set `VOICE=nova` (or another voice) to use a different track.
 - The tile cache is optional but makes tiles load fast, and the photo skin of the 3D view needs it in development.
 - `record.mjs` drives the app through its store, warms up tiles, the reach map and 3D off camera, captures the page with the Chrome DevTools screencast and encodes H.264 + AAC with ffmpeg. It uses installed Google Chrome (`PW_CHANNEL` to change).
-- The replay is captured 1.6 times longer than its slot and sped up in the cut.
+- The auto planner shot runs until the plan is ready and is sped up to its slot; the 3D replay is captured 1.8 times longer than its slot and sped up too.
 
 ## Recording by hand
 
