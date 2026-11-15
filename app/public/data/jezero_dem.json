@@ -18,6 +18,11 @@
    "scale": 4,
    "median": 234.24369891205725,
    "source": "THEMIS-derived thermal inertia of Jezero Crater, 100 m/px, Edwards & Buz (2021), doi:10.5281/zenodo.4931348"
+  },
+  "fine": {
+   "file": "jezero_fine.u8",
+   "scale": 0.5,
+   "source": "MRO HiRISE stereo DTM mosaic (JEZ_hirise_soc_006), 1 m/px, USGS Astrogeology: median slope between 2 m posts in each 20 m cell"
   }
  }
 }
