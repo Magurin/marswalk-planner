@@ -81,7 +81,7 @@ and restart `npm run dev`. The key never reaches the browser: the variable has n
 | Variable | Where | Purpose |
 | --- | --- | --- |
 | `OPENAI_API_KEY` | `app/.env.local`, Vercel project settings | Key for the assistant. Server side only |
-| `VITE_OPENAI_MODEL` | `app/.env.local` | Assistant model, `gpt-5.4-mini` by default |
+| `VITE_OPENAI_MODEL` | `app/.env.local` | Assistant model, `gpt-6-luna` by default |
 | `VITE_TILE_PROXY` | `app/.env.local` | Tile cache address, `http://127.0.0.1:8787` by default |
 
 ### Checks

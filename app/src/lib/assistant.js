@@ -8,7 +8,7 @@ import { Terrain } from './terrain.js'
 import { fmtH } from './marstime.js'
 import { plural } from './fmt.js'
 
-export const MODEL = import.meta.env.VITE_OPENAI_MODEL || 'gpt-5.4-mini'
+export const MODEL = import.meta.env.VITE_OPENAI_MODEL || 'gpt-6-luna'
 const API = '/api/openai/v1/responses'
 const MAX_ROUNDS = 8
 
