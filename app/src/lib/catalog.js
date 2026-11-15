@@ -35,7 +35,8 @@ export const LAYER_GROUPS = [
   {
     title: 'Terrain analysis',
     layers: [
-      { id: 'slope', name: 'Hazardous slopes', source: 'MRO CTX DTM', desc: 'How hard the ground is to walk, from the 20 m stereo terrain model.', opacity: 0.6, on: true },
+      { id: 'slope', name: 'Hazardous slopes', source: 'MRO CTX + HiRISE DTM', desc: 'How hard the ground is to walk. From the 20 m CTX terrain model, sharpened by the 1 m HiRISE model where it exists: a cell is as steep as the scarps and boulder fields inside it.', opacity: 0.6, on: true },
+      { id: 'ground', name: 'Loose ground', source: 'Odyssey THEMIS', desc: 'Brown is sand and dust, where every step costs more energy. From thermal inertia: loose ground cools fast at night, rock and crusted soil stay warm. 100 m.', opacity: 0.75 },
       { id: 'shade', name: 'Sun and shadows', source: 'MRO CTX DTM', desc: 'Terrain shadows at the time set by the Sun slider.', opacity: 0.85 },
       { id: 'los', name: 'Radio shadow', source: 'MRO CTX DTM', desc: 'Purple areas have no line of sight to the base comms mast.', opacity: 0.8 },
       { id: 'reach', name: 'Reach map', source: 'EVA model', desc: 'Where you can walk from the base, work on site and return within suit endurance, daylight and oxygen with a reserve. Computed over real terrain, not in a straight line.', opacity: 0.8 },
@@ -56,14 +57,15 @@ export const LAYERS = LAYER_GROUPS.flatMap((g) => g.layers)
 export const EXCLUSIVE = Object.fromEntries(LAYER_GROUPS.filter((g) => g.exclusive).flatMap((g) => g.layers.map((l) => [l.id, g.layers.filter((o) => o.id !== l.id).map((o) => o.id)])))
 
 export const SOURCES = [
-  ['MRO HiRISE', '25 cm orthomosaic of Jezero'],
+  ['MRO HiRISE', '25 cm orthomosaic and 1 m stereo terrain model of Jezero'],
   ['MRO CTX', '6 m mosaic and 20 m stereo terrain model'],
   ['MGS MOLA', 'global laser altimetry, reference elevations'],
-  ['Mars Odyssey THEMIS', 'daytime and nighttime thermal infrared'],
+  ['Mars Odyssey THEMIS', 'daytime and nighttime thermal infrared, thermal inertia (ground firmness)'],
   ['Viking orbiters', 'global color mosaic'],
   ['Mars 2020 Perseverance', 'traverse, ground data, MEDA weather'],
   ['Mars 2020 Ingenuity', 'flight log and landing sites'],
   ['MSL Curiosity REMS', 'multi-year seasonal weather record'],
+  ['MSL Curiosity RAD', 'radiation dose rate on the surface'],
 ]
 
 // Named places shown when the map is zoomed out to the whole planet.

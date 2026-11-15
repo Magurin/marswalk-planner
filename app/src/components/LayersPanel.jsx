@@ -1,7 +1,7 @@
 import { Info, Sun, Moon, Sunrise } from 'lucide-react'
 import { useStore, SITE } from '@/store'
 import { LAYER_GROUPS } from '@/lib/catalog'
-import { SLOPE_CLASSES } from '@/lib/terrain'
+import { SLOPE_CLASSES, GROUND_CLASSES } from '@/lib/terrain'
 import { REACH_CLASSES } from '@/lib/reach'
 import { sunAt, fmtH } from '@/lib/marstime'
 import { Switch } from '@/components/ui/switch'
@@ -41,6 +41,13 @@ function LayerRow({ def }) {
               <span className="size-3 shrink-0 rounded-sm ring-1 ring-black/40" style={{ background: `rgb(${c.color})` }} />
               <span className="tabular">{c.label}</span>
             </div>
+          ))}
+        </div>
+      )}
+      {st.on && def.id === 'ground' && (
+        <div className="mt-2.5 space-y-1 pl-[52px] text-[12.5px]">
+          {GROUND_CLASSES.filter((c) => c.alpha).map((c) => (
+            <div key={c.label} className="flex items-center gap-2"><span className="size-3 shrink-0 rounded-sm ring-1 ring-black/40" style={{ background: `rgb(${c.color})` }} />{c.label}: {c.note}</div>
           ))}
         </div>
       )}

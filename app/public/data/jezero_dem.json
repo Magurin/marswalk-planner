@@ -16,7 +16,7 @@
   "ti": {
    "file": "jezero_ti.u8",
    "scale": 4,
-   "median": 234.13304138183594,
+   "median": 234.24369891205725,
    "source": "THEMIS-derived thermal inertia of Jezero Crater, 100 m/px, Edwards & Buz (2021), doi:10.5281/zenodo.4931348"
   }
  }

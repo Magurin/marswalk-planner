@@ -151,7 +151,7 @@ function Checks() {
 const PARAM_FIELDS = [
   ['flatSpeedKmh', 'Speed on flat ground', 'km/h', 0.1], ['massKg', 'Astronaut mass with suit', 'kg', 1], ['maxSlopeDeg', 'Max walkable slope', '°', 1],
   ['evaLimitH', 'Suit endurance', 'h', 0.5], ['o2TankKg', 'Oxygen available', 'kg', 0.05], ['o2ReserveMin', 'Oxygen reserve', 'min', 5],
-  ['stationW', 'Work power at stops', 'W', 10], ['walkbackKm', 'Walk-back limit', 'km', 0.5], ['sunsetMarginMin', 'Margin before sunset', 'min', 5], ['mastM', 'Base mast height', 'm', 1], ['reachWorkMin', 'Work time for reach map', 'min', 5],
+  ['stationW', 'Work power at stops', 'W', 10], ['walkbackKm', 'Walk-back limit', 'km', 0.5], ['sunsetMarginMin', 'Margin before sunset', 'min', 5], ['mastM', 'Base mast height', 'm', 1], ['reachWorkMin', 'Work time for reach map', 'min', 5], ['looseGround', 'Walking cost on loose ground', 'x firm', 0.05],
 ]
 
 function Assumptions() {
@@ -163,7 +163,7 @@ function Assumptions() {
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>EVA model assumptions</DialogTitle>
-          <DialogDescription className="text-[13.5px]">Speed depends on slope via a Tobler-style curve, anchored to the suited pace on flat ground. Energy cost follows Santee et al. (2001) with Mars gravity; oxygen assumes 20.1 kJ per liter. A planning aid, not flight rules.</DialogDescription>
+          <DialogDescription className="text-[13.5px]">Speed depends on slope via a Tobler-style curve, anchored to the suited pace on flat ground. Energy cost follows Santee et al. (2001) with Mars gravity, raised on loose ground mapped by THEMIS thermal inertia; oxygen assumes 20.1 kJ per liter. A planning aid, not flight rules.</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
           {PARAM_FIELDS.map(([k, label, unit, step]) => (

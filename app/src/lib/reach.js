@@ -1,14 +1,14 @@
 // Reach map, emergency return and the auto planner. All three stand on least-time fields over the 20 m grid:
-// Dijkstra from one point to every cell around it, with the same walking speed, slope limit and slope penalty
-// as Terrain.route, so a field agrees with the routes drawn on the map.
+// Dijkstra from one point to every cell around it, with the same walking speed, slope limit, slope penalty
+// and ground factor as Terrain.route, so a field agrees with the routes drawn on the map.
 import { Heap } from './terrain.js'
-import { speedMs, powerW, O2_KG_PER_J, reserveKg, timeBudgetH } from './eva.js'
+import { speedMs, powerW, groundFactor, O2_KG_PER_J, reserveKg, timeBudgetH } from './eva.js'
 import { fx } from './fmt.js'
 
 const HAZARD = 1.5 // slope penalty, as in Terrain.route
 
 // Parameters that change the fields themselves. The rest (tank, suit hours, start time...) only change how they are read.
-export const reachKey = (base, p) => base && [base.lon, base.lat, p.flatSpeedKmh, p.massKg, p.maxSlopeDeg, p.walkbackKm].map((v) => (+v).toFixed(6)).join(',')
+export const reachKey = (base, p) => base && [base.lon, base.lat, p.flatSpeedKmh, p.massKg, p.maxSlopeDeg, p.walkbackKm, p.looseGround].map((v) => (+v).toFixed(6)).join(',')
 
 // Grid window around a point, with a mask for the cells within `radius` metres of it.
 export function windowAround(T, lon, lat, radius) {
@@ -42,6 +42,7 @@ export function fieldFrom(T, lon, lat, p, win, dir = 1, targets = null) {
     }
   }
   const ms = p.maxSlopeDeg
+  const soft = p.looseGround > 1 ? T.soft : null
   const s0 = ri * w + ci
   const heap = new Heap()
   cost[s0] = 0; time[s0] = 0; en[s0] = 0; heap.push(0, s0)
@@ -70,8 +71,10 @@ export function fieldFrom(T, lon, lat, p, win, dir = 1, targets = null) {
       if (sIn > ms && !(dir > 0 ? targets?.has(j) : i === s0)) continue
       const grade = dir > 0 ? (zj - zi) / d : (zi - zj) / d
       const v = speedMs(grade, p), dt = d / v
-      const k = cost[i] + dt * (1 + HAZARD * Math.min(1, sIn / ms) ** 2)
-      if (k < cost[j]) { cost[j] = k; time[j] = time[i] + dt; en[j] = en[i] + powerW(v, grade, p) * dt; heap.push(k, j) }
+      // Ground under the cell being walked into, as for the slope.
+      const eta = soft ? groundFactor(soft[dir > 0 ? gj : gi], p) : 1
+      const k = cost[i] + dt * (1 + HAZARD * Math.min(1, sIn / ms) ** 2) * eta
+      if (k < cost[j]) { cost[j] = k; time[j] = time[i] + dt; en[j] = en[i] + powerW(v, grade, p, eta) * dt; heap.push(k, j) }
     }
   }
   return { time, en }

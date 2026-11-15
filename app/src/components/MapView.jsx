@@ -167,6 +167,7 @@ export function MapView() {
     }
     const makeOverlay = (id, s) => {
       if (id === 'slope') return overlayFrom(s.terrain.slopeCanvas())
+      if (id === 'ground') return overlayFrom(s.terrain.groundCanvas())
       if (id === 'los') return overlayFrom(s.terrain.viewshedCanvas(s.viewshed))
       if (id === 'reach') return overlayFrom(reachCanvas(s.reach, s.params, s.mt.sunset), s.reach.bounds)
     }
@@ -278,7 +279,7 @@ export function MapView() {
         const q = sampleAt(R2, t2), key = [q.lon.toFixed(5), q.lat.toFixed(5), st.base.lon, st.base.lat, st.params.maxSlopeDeg].join()
         if (key === homeAt) return
         homeAt = key
-        const line = st.terrain.route([q.lon, q.lat], [st.base.lon, st.base.lat], { speed: (g) => speedMs(g, st.params), vmax: vmaxMs(st.params), maxSlope: st.params.maxSlopeDeg, limit: 300000 })
+        const line = st.terrain.route([q.lon, q.lat], [st.base.lon, st.base.lat], { speed: (g) => speedMs(g, st.params), vmax: vmaxMs(st.params), maxSlope: st.params.maxSlopeDeg, loose: st.params.looseGround, limit: 300000 })
         for (const l of homeLine) { l.setLatLngs((line || [[q.lon, q.lat], [st.base.lon, st.base.lat]]).map(([lon, lat]) => [lat, lon])); if (!playLayer.hasLayer(l)) l.addTo(playLayer) }
       }, st0().play.playing ? 350 : 0)
     }

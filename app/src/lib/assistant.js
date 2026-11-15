@@ -16,6 +16,7 @@ const PARAM_INFO = {
   flatSpeedKmh: 'walking speed on flat ground, km/h', massKg: 'astronaut mass with suit, kg', maxSlopeDeg: 'max walkable slope, degrees',
   evaLimitH: 'suit endurance, h', o2TankKg: 'available oxygen, kg', o2ReserveMin: 'oxygen reserve, min', stationW: 'work power at stops, W',
   walkbackKm: 'walk-back limit from base, km', sunsetMarginMin: 'margin before sunset, min', mastM: 'comms mast height, m', reachWorkMin: 'on-site work assumed for the reach map, min',
+  looseGround: 'energy cost of walking on the loosest ground relative to firm ground (1 = ignore ground type)',
 }
 
 const r2 = (v, d = 2) => (v == null || !Number.isFinite(v) ? null : +v.toFixed(d))
@@ -68,7 +69,7 @@ Change the plan only through tools. After a change, briefly say what you did and
 If the user asks for something that reduces safety (for example, cutting the oxygen reserve), do it but warn them plainly.
 In the data, verdicts are go, caution, nogo; call them GO, CAUTION and NO-GO for the user. Do not mention internal check or parameter ids in answers. Times are Jezero local true solar time (LTST).
 Before recommending a fix, test it with a tool when possible (change it and look at the verdict), and revert it if it did not help.
-EVA model: speed from Tobler's hiking function, energy from Santee et al. (2001), oxygen at 20.1 kJ per liter. This is a planning aid, not flight rules.`
+EVA model: speed from Tobler's hiking function, energy from Santee et al. (2001) with a terrain factor for loose ground (THEMIS thermal inertia), oxygen at 20.1 kJ per liter. Slopes come from the 20 m CTX model sharpened by the 1 m HiRISE model. Radiation dose from the Curiosity RAD surface rate. This is a planning aid, not flight rules.`
 
 const S = (props, required = Object.keys(props)) => ({ type: 'object', properties: props, required, additionalProperties: false })
 const fn = (name, description, parameters) => ({ type: 'function', name, description, parameters, strict: true })

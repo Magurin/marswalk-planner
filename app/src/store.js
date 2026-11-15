@@ -61,9 +61,10 @@ const trimRems = (soles) => soles.map((s) => ({ sol: +s.sol, date: s.terrestrial
 
 function legRoute(terrain, a, b, routing, p) {
   if (routing !== 'terrain') return { line: [a, b] }
-  // The pace on the flat scales every leg alike, so it does not change which path is fastest: only the slope limit does.
-  const key = [a, b, p.maxSlopeDeg].flat().map((v) => (+v).toFixed(6)).join(',')
-  if (!routeCache.has(key)) routeCache.set(key, terrain.route(a, b, { speed: (g) => speedMs(g, p), vmax: vmaxMs(p), maxSlope: p.maxSlopeDeg }))
+  // The pace on the flat scales every leg alike, so it does not change which path is fastest: only the slope limit
+  // and the cost of loose ground do.
+  const key = [a, b, p.maxSlopeDeg, p.looseGround].flat().map((v) => (+v).toFixed(6)).join(',')
+  if (!routeCache.has(key)) routeCache.set(key, terrain.route(a, b, { speed: (g) => speedMs(g, p), vmax: vmaxMs(p), maxSlope: p.maxSlopeDeg, loose: p.looseGround }))
   const line = routeCache.get(key)
   return line ? { line } : { line: [a, b], failed: true }
 }

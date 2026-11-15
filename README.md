@@ -26,12 +26,12 @@ The app runs entirely in the browser. Server-side code is optional: a tile cache
 
 | | |
 | --- | --- |
-| 🧭 **Terrain routing** | Least-time A* paths on a 20 m grid that avoid slopes beyond the suit limit |
-| ✅ **Go / caution / no-go** | Slope, suit endurance, daylight, oxygen, walk-back range, comms, shadow, temperature |
+| 🧭 **Terrain routing** | Least-time A* paths on a 20 m grid that avoid slopes beyond the suit limit and lean away from loose ground |
+| ✅ **Go / caution / no-go** | Slope, suit endurance, daylight, oxygen, walk-back range, comms, shadow, temperature, ground, radiation |
 | 🗺️ **Reach map** | Where you can walk, work and still get home in time - over real terrain, not as the crow flies |
 | 🆘 **Emergency return** | The worst moment of the walk for an injury or a leak, and what the way home would cost |
 | 🤖 **Auto planner** | The most science targets that fit in one EVA, in the best order (exact search) |
-| 🌗 **Terrain analysis** | Slope classes, cast shadows for any solar time, radio shadow from the base mast |
+| 🌗 **Terrain analysis** | Slope classes sharpened by the 1 m HiRISE model, loose ground from THEMIS thermal inertia, cast shadows for any solar time, radio shadow from the base mast |
 | 🕘 **Best start time** | The same route checked for a start at every quarter hour of daylight |
 | 🎬 **Replay and 3D** | Walk replay with live oxygen, 3D view, Perseverance raw images at each stop |
 | 🕒 **Mars clock** | Mission sol, local true solar time, Ls, sunrise and sunset at Jezero |
@@ -130,11 +130,18 @@ The base is the MRO CTX stereo DTM: a 1596 x 1512 grid of 20 m cells (about 32 x
 - Slope uses the Horn operator on a 3 x 3 window. Six classes: 0-5°, 5-10°, 10-15°, 15-20° (suit limit), 20-30° (not on foot), over 30° (scarp).
 - Distances use a local flat approximation on a 3396.19 km sphere; at EVA scale the error is negligible.
 
+Two more layers sit on the same grid, one byte per cell each. Both are optional: they are named in `jezero_dem.json` under `layers`, and the model runs without them.
+
+- **Fine slope** (`jezero_fine.u8`, half degrees, `255` is no data) comes from the 1 m HiRISE stereo model, which covers the central 21 x 21 km. The 1 m model is averaged to 2 m posts, slopes are taken between neighbouring posts, and each 20 m cell keeps the median of its hundred values: the slope under a typical step there. A 20 m cell smooths a boulder field, a dune field or a small crater into a gentle average; this number does not. A cell is as steep as the worse of the two models, so routing, the reach map, the slope layer and the slope check all see it. Elevation, grade along the path, shadows and radio still come from the CTX model.
+- **Ground** (`jezero_ti.u8`, thermal inertia divided by 4, `0` is no data) is the THEMIS-derived thermal inertia map of Jezero by Edwards & Buz (2021), 100 m per pixel, resampled bilinearly. Thermal inertia says how well the ground holds heat: rock and crusted soil score high, loose sand and dust low. Softness runs from 0 at 350 J m⁻² K⁻¹ s⁻¹ᐟ² and above (firm) to 1 at 150 and below (loose). The absolute accuracy of the map is about 20%. Where it has a gap, the cell gets the typical ground of the site.
+
 ### Speed and energy (`eva.js`)
 
 - **Speed** is a Tobler-style curve against the signed grade of the path, scaled to a suited pace: `v = v0 * exp(-3.5 * |grade + 0.05| + 0.175)`. On level ground that is exactly `v0` (3 km/h by default), the fastest is a gentle 5% descent, the floor is 0.08 m/s.
 - **Metabolic rate** follows Santee et al. (2001), the planetary EVA form used by MIT's SEXTANT traverse planner, with Mars gravity of 3.71 m/s². Never below 120 W. At a science stop it is a fixed 220 W.
 - **Oxygen** is 20.1 kJ per litre of O2, that is 7.11e-8 kg per joule. The reserve is sized as 45 minutes of walking at 300 W (about 0.06 kg) and must remain in the tank on return.
+- **Ground** raises the cost of moving over the surface by a terrain factor, as in the load-carriage equations (Soule & Goldman 1972, Pandolf et al. 1977): 1 on firm ground, up to 1.3 on the loosest. It scales the level-walking term only, not the work against gravity, and does not change the pace. The factor on the loosest ground is an assumption you can edit; 1 switches the ground model off.
+- **Radiation** is the share of a day spent outside, at the 0.64 mSv per day that the RAD instrument on Curiosity measured on the surface (Hassler et al. 2014), shown against NASA's 600 mSv career limit. The rate is from Gale Crater, at a similar elevation; solar particle events are not modelled.
 - Grade is signed, so the way out and the way back cost differently.
 
 Defaults:
@@ -151,6 +158,7 @@ Defaults:
 | Walk-back limit | 6 km straight-line |
 | Margin before sunset | 60 min |
 | Radio mast height | 10 m |
+| Walking cost on the loosest ground | 1.3 x firm ground |
 | Start | 09:00 local solar time |
 
 ### Routing
@@ -159,6 +167,7 @@ A* on the 20 m grid with 8 directions; the cost is travel time.
 
 - Cells steeper than the limit are closed. The exception is the goal itself: a stop on a steep slope can be reached, and it then shows up in the slope check.
 - Nearing the limit is penalized: time on a cell is multiplied by `1 + 1.5 * (slope / limit)²`, so the route prefers a gentle detour to walking along a dangerous edge. The penalty only steers the choice of path; time and oxygen are computed without it.
+- Loose ground is penalized the same way, by its terrain factor, so the path leans toward firm ground when the detour is short.
 - The heuristic is straight-line distance over the highest possible speed, so the search stays optimal.
 - The result is simplified with Douglas-Peucker at a 6 m tolerance.
 - If there is no passable way, the leg is drawn as a straight line and the plan gets a no-go with a "routing" check.
@@ -178,6 +187,8 @@ The finished route is walked in 20 m steps: each sample knows its elevation, slo
 | Line of sight to base | mast visible from under 60% of the route | under 90% |
 | Shadow on the way | - | over 25% of walking time in shadow |
 | Air temperature | - | colder than -75 °C |
+| Ground under foot | - | over 30% of the route on loose ground |
+| Radiation | - | - (dose for the walk, for information) |
 | Terrain model coverage | - | part of the route is off the model |
 | Emergency return | oxygen or suit time runs out | over 90% used, or less than half the reserve left |
 
@@ -247,14 +258,15 @@ Fine print:
 
 | Source | Used for |
 | --- | --- |
-| MRO **HiRISE** | 25 cm base imagery (NASA Mars Trek) |
+| MRO **HiRISE** | 25 cm base imagery (NASA Mars Trek); 1 m stereo DTM behind the fine slopes |
 | MRO **CTX** | 6 m mosaic + 20 m stereo DTM behind slope, shadow, radio and routing |
 | MGS **MOLA** | Colour elevation, vertical reference |
-| Mars Odyssey **THEMIS** | Day / night IR - rock vs. loose dust |
+| Mars Odyssey **THEMIS** | Day / night IR imagery; thermal inertia behind the ground model |
 | **Viking** Orbiters | Global colour context |
 | Mars 2020 **Perseverance** | Traverse, science targets, MEDA weather, raw images |
 | Mars 2020 **Ingenuity** | Flight log and airfields |
 | MSL **Curiosity** REMS | Multi-year seasonal weather (Gale Crater, not Jezero) |
+| MSL **Curiosity** RAD | Radiation dose rate on the surface |
 
 ### Direct links
 
@@ -269,6 +281,9 @@ Fine print:
 | Viking MDIM 2.1 colour mosaic (Trek layer) | `Mars_Viking_MDIM21_ClrMosaic_global_232m` |
 | Perseverance traverse and waypoints (NASA MMGIS) | https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_traverse.json , https://mars.nasa.gov/mmgis-maps/M20/Layers/json/M20_waypoints.json |
 | Ingenuity flight waypoints (NASA MMGIS) | https://mars.nasa.gov/mmgis-maps/M20/Layers/json/m20_heli_waypoints.json |
+| HiRISE 1 m Jezero DTM (USGS, Mars 2020 TRN products) | https://planetarymaps.usgs.gov/mosaic/mars2020_trn/HiRISE/JEZ_hirise_soc_006_DTM_MOLAtopography_DeltaGeoid_1m_Eqc_latTs0_lon0_blend40.tif |
+| THEMIS-derived thermal inertia of Jezero Crater, Edwards & Buz 2021 (CC BY 4.0) | https://doi.org/10.5281/zenodo.4931348 |
+| Surface radiation measured by MSL RAD, Hassler et al. 2014 | https://doi.org/10.1126/science.1244797 |
 | Perseverance MEDA weather | https://mars.nasa.gov/rss/api/?feed=weather&category=mars2020&feedtype=json |
 | Curiosity REMS weather | https://mars.nasa.gov/rss/api/?feed=weather&category=msl&feedtype=json |
 | Perseverance raw images | https://mars.nasa.gov/rss/api/?feed=raw_images&category=mars2020&feedtype=json&sol=<sol> |
@@ -289,7 +304,15 @@ python -m venv .venv && .venv/Scripts/pip install rasterio numpy
 
 A single step can be run on its own: `prepare_data.py dem`, `rover` or `weather` (the last two do not need the DTM).
 
-> The script writes to `web/data`, the folder of the first prototype. The app reads `app/public/data`, so copy the result there by hand.
+The ground and fine-slope layers are separate steps, not run by default. Download the [thermal inertia map](https://doi.org/10.5281/zenodo.4931348) to `data/raw/jezero_themis_ti.tif` and the [HiRISE DTM](https://planetarymaps.usgs.gov/mosaic/mars2020_trn/HiRISE/JEZ_hirise_soc_006_DTM_MOLAtopography_DeltaGeoid_1m_Eqc_latTs0_lon0_blend40.tif) (1.8 GB) to `data/raw/jezero_hirise_dtm_1m.tif`, then:
+
+```bash
+.venv/Scripts/python tools/prepare_data.py ground fine
+```
+
+These two write straight to `app/public/data` and add themselves to `layers` in `jezero_dem.json` there.
+
+> The `dem`, `rover` and `weather` steps write to `web/data`, the folder of the first prototype. The app reads `app/public/data`, so copy the result there by hand. If you copy `jezero_dem.json`, run the `ground` and `fine` steps again: they keep their entries in that file.
 
 ## AI tools used
 
@@ -337,9 +360,10 @@ web/                    First prototype in plain HTML and JS, kept for history
 
 ## Model limitations
 
-- A 20 m grid cannot see rocks, sand ripples or scarps smaller than a cell. The route says where a slope is passable, not where to put a foot.
-- Ground properties are ignored: loose sand and solid slab cost the same at the same slope. The THEMIS night IR layer shows the difference to the eye but does not enter the calculation.
-- Dust and atmospheric opacity, radiation, suit thermal balance and water use are not modelled.
+- Routing runs on a 20 m grid. Inside the 1 m HiRISE model a cell knows how rough it is, so boulder fields, dune fields and small craters close or slow it; single rocks under a couple of metres stay invisible, and outside the HiRISE model only the 20 m slopes are known. The route says where the ground is passable, not where to put a foot.
+- Ground firmness comes from thermal inertia at 100 m per pixel, accurate to about 20%: it tells sand from rock over a field, not a sand trap from the slab next to it. How much a suited walker pays for loose ground in Mars gravity has never been measured; the factor is an assumption taken from load-carriage studies on Earth.
+- Radiation is an average dose rate. A solar particle event, the case that matters most, is not modelled.
+- Dust and atmospheric opacity, suit thermal balance and water use are not modelled.
 - Comms is pure line-of-sight geometry, with no relays or orbiters.
 - A route can only be planned inside the CTX terrain model.
 - Speed, energetics and limits are reasoned assumptions from published work (Tobler, Santee et al., Apollo experience), not certified figures for a specific suit.

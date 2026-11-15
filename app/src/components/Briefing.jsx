@@ -13,7 +13,7 @@ const VERDICT_BG = { go: '#16a34a', caution: '#ca8a04', nogo: '#dc2626' }
 const PARAMS = [
   ['flatSpeedKmh', 'Speed on flat ground', 'km/h'], ['massKg', 'Mass with suit', 'kg'], ['maxSlopeDeg', 'Max slope', '°'], ['evaLimitH', 'Suit endurance', 'h'],
   ['o2TankKg', 'Oxygen', 'kg'], ['o2ReserveMin', 'Oxygen reserve', 'min'], ['stationW', 'Power at stops', 'W'], ['walkbackKm', 'Walk-back limit', 'km'],
-  ['sunsetMarginMin', 'Margin before sunset', 'min'], ['mastM', 'Radio mast', 'm'],
+  ['sunsetMarginMin', 'Margin before sunset', 'min'], ['mastM', 'Radio mast', 'm'], ['looseGround', 'Cost on loose ground', 'x firm'],
 ]
 
 // Shaded relief of the route area drawn from the CTX terrain model, with the route on top. Needs no map tiles, so it always prints.

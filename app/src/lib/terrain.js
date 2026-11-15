@@ -1,4 +1,6 @@
 // Terrain engine on the MRO CTX 20 m DTM: elevation, slope, sun shadows, line-of-sight and least-time routing.
+// Two more layers ride on the same grid when the data is there: the steepness the 1 m HiRISE model sees inside
+// each cell, and how firm the ground is, from THEMIS thermal inertia.
 export const M_PER_DEG = (3396190 * Math.PI) / 180;
 const D2R = Math.PI / 180;
 
@@ -11,6 +13,16 @@ export const SLOPE_CLASSES = [
   { max: 91, color: [176, 48, 190], label: 'over 30°', note: 'cliff, scarp' },
 ];
 export const slopeClass = (deg) => SLOPE_CLASSES.findIndex((c) => deg < c.max);
+
+// Thermal inertia (J m-2 K-1 s-1/2) is how well the ground holds heat: bedrock and crusted soil score high,
+// loose sand and dust low. Softness runs from 0 at TI_FIRM and above to 1 at TI_LOOSE and below.
+export const TI_FIRM = 350, TI_LOOSE = 150;
+export const softness = (ti) => Math.min(1, Math.max(0, (TI_FIRM - ti) / (TI_FIRM - TI_LOOSE)));
+export const GROUND_CLASSES = [
+  { min: 0.75, color: [146, 84, 30], alpha: 190, label: 'loose', note: `thermal inertia under ${TI_FIRM - 0.75 * (TI_FIRM - TI_LOOSE)}: sand and dust, the most tiring` },
+  { min: 0.5, color: [190, 132, 66], alpha: 110, label: 'mixed', note: 'sand over firmer ground' },
+  { min: -1, color: [0, 0, 0], alpha: 0, label: 'firm', note: 'crusted soil and rock, not tinted' },
+];
 
 export class Heap {
   constructor() { this.k = []; this.v = []; }
@@ -52,10 +64,19 @@ export class Terrain {
       fetch(`${base}.json`).then((r) => r.json()),
       fetch(`${base}.u16`).then((r) => r.arrayBuffer()),
     ]);
-    return new Terrain(meta, new Uint16Array(buf));
+    // Optional one-byte-per-cell layers named in the metadata; the model works without them.
+    const dir = base.slice(0, base.lastIndexOf('/') + 1);
+    const extra = {};
+    await Promise.all(Object.entries(meta.layers || {}).map(async ([k, l]) => {
+      try {
+        const r = await fetch(dir + l.file);
+        if (r.ok) extra[k] = new Uint8Array(await r.arrayBuffer());
+      } catch { /* the layer stays off */ }
+    }));
+    return new Terrain(meta, new Uint16Array(buf), extra);
   }
 
-  constructor(meta, raw) {
+  constructor(meta, raw, extra = {}) {
     this.meta = meta;
     const W = (this.W = meta.width), H = (this.H = meta.height);
     this.lat0 = (meta.north + meta.south) / 2;
@@ -81,7 +102,36 @@ export class Terrain {
       }
     }
     this.bounds = [[meta.south, meta.west], [meta.north, meta.east]];
+
+    // Fine slope: how steep the ground gets inside the cell at the scale of a few steps, from the 1 m HiRISE model
+    // (see tools/prepare_data.py). A 20 m cell averages a scarp or a boulder field away; this puts them back.
+    // The cell is as steep as the worse of the two, so routing, the reach map and the slope check all see it.
+    const fine = extra.fine?.length === W * H ? extra.fine : null;
+    this.fine = fine;
+    if (fine) {
+      const k = meta.layers.fine.scale;
+      for (let i = 0; i < sl.length; i++) if (fine[i] !== 255 && fine[i] * k > sl[i]) sl[i] = fine[i] * k;
+    }
+    // Ground softness per cell, 0 firm to 1 loose. Where the thermal inertia map has a gap, the typical ground of the site.
+    const ti = extra.ti?.length === W * H ? extra.ti : null;
+    this.ti = ti;
+    if (ti) {
+      const k = meta.layers.ti.scale, typical = softness(meta.layers.ti.median);
+      const soft = (this.soft = new Float32Array(W * H));
+      for (let i = 0; i < soft.length; i++) soft[i] = ti[i] ? softness(ti[i] * k) : typical;
+    }
   }
+
+  cell(lon, lat) {
+    const c = Math.round(this.col(lon)), r = Math.round(this.row(lat));
+    return c < 0 || r < 0 || c >= this.W || r >= this.H ? -1 : r * this.W + c;
+  }
+  // 0 firm to 1 loose; 0 where there is no ground data at all.
+  softAt(lon, lat) { const i = this.cell(lon, lat); return this.soft && i >= 0 ? this.soft[i] : 0; }
+  // Thermal inertia, or null where the map has none.
+  tiAt(lon, lat) { const i = this.cell(lon, lat); return this.ti && i >= 0 && this.ti[i] ? this.ti[i] * this.meta.layers.ti.scale : null; }
+  // Does the 1 m HiRISE model cover this cell?
+  fineAt(lon, lat) { const i = this.cell(lon, lat); return !!this.fine && i >= 0 && this.fine[i] !== 255; }
 
   col(lon) { return ((lon - this.meta.west) / (this.meta.east - this.meta.west)) * this.W - 0.5; }
   row(lat) { return ((this.meta.north - lat) / (this.meta.north - this.meta.south)) * this.H - 0.5; }
@@ -122,6 +172,19 @@ export class Terrain {
         const k = slopeClass(s), col = SLOPE_CLASSES[k].color;
         px[i * 4] = col[0]; px[i * 4 + 1] = col[1]; px[i * 4 + 2] = col[2];
         px[i * 4 + 3] = k === 0 ? 40 : 150 + k * 15;
+      }
+    });
+  }
+
+  // Loose and mixed ground tinted brown; firm ground left clear.
+  groundCanvas() {
+    return this.canvas((px) => {
+      if (!this.ti) return;
+      const k = this.meta.layers.ti.scale;
+      for (let i = 0; i < this.ti.length; i++) {
+        if (!this.ti[i] || !(this.z[i] === this.z[i])) continue;
+        const s = softness(this.ti[i] * k), g = GROUND_CLASSES.find((c) => s >= c.min);
+        px[i * 4] = g.color[0]; px[i * 4 + 1] = g.color[1]; px[i * 4 + 2] = g.color[2]; px[i * 4 + 3] = g.alpha;
       }
     });
   }
@@ -224,8 +287,10 @@ export class Terrain {
 
   // Least-time path between two [lon, lat] points with A* on the 20 m grid.
   // speed(grade) gives m/s for a signed grade (rise over run); cells steeper than maxSlope are closed.
-  route(a, b, { speed, vmax, maxSlope = 20, hazard = 1.5, limit = 900000 }) {
+  // loose: how much more a step on the loosest ground costs than on firm ground; the path leans toward firm ground.
+  route(a, b, { speed, vmax, maxSlope = 20, hazard = 1.5, loose = 1, limit = 900000 }) {
     const { W, H, z, slope, dx, dy } = this;
+    const soft = loose > 1 ? this.soft : null;
     const ca = Math.round(this.col(a[0])), ra = Math.round(this.row(a[1]));
     const cb = Math.round(this.col(b[0])), rb = Math.round(this.row(b[1]));
     const ok = (c, r) => c >= 0 && r >= 0 && c < W && r < H;
@@ -273,7 +338,8 @@ export class Terrain {
         const zj = z[j], sj = slope[j];
         if (!(zj === zj)) continue;
         if (sj > maxSlope && j !== goal) continue;
-        const pen = 1 + hazard * (sj / maxSlope) * (sj / maxSlope);
+        let pen = 1 + hazard * (sj / maxSlope) * (sj / maxSlope);
+        if (soft) pen *= 1 + (loose - 1) * soft[j];
         const t = g[i] + (d / speed((zj - zi) / d)) * pen;
         if (t < g[j]) { g[j] = t; from[j] = i; heap.push(t + h(j), j); }
       }

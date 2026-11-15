@@ -18,6 +18,7 @@ export const DEFAULTS = {
   sunsetMarginMin: 60, // be back this long before sunset
   mastM: 10,           // base radio mast height
   reachWorkMin: 30,    // work time at the far point assumed by the reach map
+  looseGround: 1.3,    // level-walking cost on the loosest ground against firm ground (1 switches the ground model off)
   startLTST: 9.0,
 };
 
@@ -28,15 +29,26 @@ export function speedMs(grade, p) {
 }
 export const vmaxMs = (p) => (p.flatSpeedKmh / 3.6) * Math.exp(0.175);
 
+// Terrain factor of the ground under foot, in the sense of the load-carriage equations (Soule & Goldman 1972,
+// Pandolf et al. 1977): 1 on a firm surface, more where the foot sinks. soft is 0 firm to 1 loose (Terrain.softAt).
+export const groundFactor = (soft, p) => 1 + (Math.max(1, p.looseGround ?? 1) - 1) * soft;
+
 // Metabolic rate in watts after Santee et al. (2001), the planetary EVA form used by MIT's SEXTANT traverse planner.
-export function powerW(v, grade, p) {
+// eta is the terrain factor; it scales the cost of moving over the ground, not the work against gravity.
+export function powerW(v, grade, p, eta = 1) {
   const a = Math.atan(grade), deg = a / D2R, m = p.massKg;
-  const level = (3.28 * m + 71.1) * (0.661 * v * Math.cos(a) + 0.115);
+  const level = (3.28 * m + 71.1) * (0.661 * v * Math.cos(a) + 0.115) * eta;
   const slope = grade >= 0
     ? 3.5 * m * G_MARS * v * Math.sin(a)
     : 2.4 * m * G_MARS * v * Math.sin(a) * Math.pow(0.3, Math.abs(deg) / 7.65);
   return Math.max(120, level + slope);
 }
+
+// Radiation on the surface: the RAD instrument on Curiosity measured an average galactic cosmic ray dose equivalent
+// of 0.64 mSv per day in Gale Crater (Hassler et al. 2014). A suit shields far less than the atmosphere already does,
+// so the dose of a walk is simply its share of the day. Solar particle events are not modelled.
+export const RAD_MSV_PER_DAY = 0.64, CAREER_LIMIT_MSV = 600; // NASA-STD-3001 career limit
+export const doseMsv = (hours) => (RAD_MSV_PER_DAY * hours) / 24;
 
 export const O2_KG_PER_J = 7.11e-8; // about 20.1 kJ per litre of O2, 1.429 g per litre
 // Oxygen that must be left on return, sized at a 300 W walk-back rate.
@@ -73,6 +85,8 @@ export function analyze(terrain, legs, stops, base, p, env) {
   const S = [];
   let dist = 0, t = 0, energy = 0, climb = 0, descent = 0, maxSlope = 0, far = 0, farAt = null;
   let losKnown = 0, losYes = 0, offDem = 0, walkT = 0, shadeT = 0;
+  // Walking energy as it would be on firm ground everywhere, and metres of route by ground class and by terrain model.
+  let firmEnergy = 0, stopEnergy = 0, looseD = 0, mixedD = 0, groundD = 0, fineD = 0;
   const arrivals = [];
   // Cast shadow at each sample, for the sun at the time the walker gets there (cold and poor light).
   const sunCache = new Map();
@@ -103,9 +117,13 @@ export function analyze(terrain, legs, stops, base, p, env) {
         if (!known) offDem += d;
         const grade = known ? (z1 - z0) / d : 0;
         const slope = known ? terrain.slopeAt(p0[0], p0[1]) : 0;
-        const v = speedMs(grade, p), w = powerW(v, grade, p);
+        const soft = terrain.softAt(p1[0], p1[1]);
+        const v = speedMs(grade, p), w = powerW(v, grade, p, groundFactor(soft, p));
         if (S.length === 0) push(p0, z0, slope, grade, v, w, li);
         dist += d; t += d / v; energy += (w * d) / v;
+        firmEnergy += (powerW(v, grade, p) * d) / v;
+        if (terrain.tiAt(p1[0], p1[1]) != null) { groundD += d; if (soft >= 0.75) looseD += d; else if (soft >= 0.5) mixedD += d; }
+        if (terrain.fineAt(p1[0], p1[1])) fineD += d;
         if (known) { if (z1 > z0) climb += z1 - z0; else descent += z0 - z1; }
         if (slope > maxSlope) maxSlope = slope;
         const fb = Terrain.dist(p1, base);
@@ -118,7 +136,7 @@ export function analyze(terrain, legs, stops, base, p, env) {
     const st = stops[li];
     const arrive = t;
     if (st && st.minutes > 0) {
-      t += st.minutes * 60; energy += p.stationW * st.minutes * 60;
+      t += st.minutes * 60; energy += p.stationW * st.minutes * 60; stopEnergy += p.stationW * st.minutes * 60;
       const last = S[S.length - 1];
       if (last) S.push({ ...last, t, e: energy, ltst: p.startLTST + t / 3600, w: p.stationW, v: 0 });
     }
@@ -138,12 +156,17 @@ export function analyze(terrain, legs, stops, base, p, env) {
     if (T != null) { tLo = Math.min(tLo, T); tHi = Math.max(tHi, T); }
   }
 
+  const dose = doseMsv(hours);
+  const walkExtraPct = firmEnergy > 0 ? (100 * (energy - stopEnergy - firmEnergy)) / firmEnergy : 0;
+  const loosePct = groundD > 0 ? (100 * looseD) / groundD : null, mixedPct = groundD > 0 ? (100 * mixedD) / groundD : null;
+  const finePct = dist > 0 ? (100 * fineD) / dist : 0;
+
   const checks = [];
   const fx = (n, d = 0) => (+n).toFixed(d);
   const add = (id, label, status, detail) => checks.push({ id, label, status, detail });
   const lvl = (bad, warn) => (bad ? 'nogo' : warn ? 'caution' : 'go');
   add('slope', 'Slope', lvl(maxSlope > p.maxSlopeDeg, maxSlope > p.maxSlopeDeg - 5),
-    `Steepest section ${maxSlope.toFixed(0)}°, limit ${fx(p.maxSlopeDeg)}°`);
+    `Steepest section ${maxSlope.toFixed(0)}°, limit ${fx(p.maxSlopeDeg)}°` + (finePct >= 1 ? `. The 1 m HiRISE terrain model covers ${finePct.toFixed(0)}% of the route` : ''));
   add('time', 'Suit endurance', lvl(hours > p.evaLimitH, hours > p.evaLimitH * 0.85),
     `${fx(hours, 1)} h of ${fx(p.evaLimitH, p.evaLimitH % 1 ? 1 : 0)} h`);
   const back = env.sunset - endLTST;
@@ -160,9 +183,13 @@ export function analyze(terrain, legs, stops, base, p, env) {
     `The ${fx(p.mastM)} m base mast is visible from ${losPct.toFixed(0)}% of the route` + (losPct < 90 ? '. Needs a relay or planned comm stops' : ''));
   if (tLo < Infinity) add('thermal', 'Air temperature', lvl(false, tLo < -75),
     `${tLo.toFixed(0)} to ${tHi.toFixed(0)} °C during the EVA, estimated from Jezero MEDA data for sol ${env.wx.sol}`);
+  if (loosePct != null && p.looseGround > 1) add('ground', 'Ground under foot', lvl(false, loosePct > 30),
+    `${loosePct.toFixed(0)}% loose, ${mixedPct.toFixed(0)}% mixed, ${(100 - loosePct - mixedPct).toFixed(0)}% firm by THEMIS thermal inertia. Walking costs ${walkExtraPct.toFixed(0)}% more energy than on firm ground`);
+  if (hours > 0) add('radiation', 'Radiation', 'go',
+    `About ${fx(dose, 2)} mSv for this walk at ${RAD_MSV_PER_DAY} mSv per day (Curiosity RAD), ${fx((100 * dose) / CAREER_LIMIT_MSV, 2)}% of the ${CAREER_LIMIT_MSV} mSv career limit. Solar storms are not modelled`);
   if (offDem > 1) add('dem', 'Terrain model coverage', 'caution', `${fx(offDem / 1000, 2)} km of the route is outside the CTX terrain model`);
 
   const order = { go: 0, caution: 1, nogo: 2 };
   const overall = checks.reduce((a, c) => (order[c.status] > order[a] ? c.status : a), 'go');
-  return { samples: S, dist, hours, endLTST, energy, avgW, o2, reserveKg: reserve, shadowPct, climb, descent, maxSlope, far, farAt, losPct, tLo, tHi, arrivals, checks, overall };
+  return { samples: S, dist, hours, endLTST, energy, avgW, o2, reserveKg: reserve, shadowPct, climb, descent, maxSlope, far, farAt, losPct, tLo, tHi, arrivals, checks, overall, dose, loosePct, mixedPct, walkExtraPct, finePct };
 }
