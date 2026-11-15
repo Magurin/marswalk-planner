@@ -267,6 +267,7 @@ Fine print:
 | Mars 2020 **Ingenuity** | Flight log and airfields |
 | MSL **Curiosity** REMS | Multi-year seasonal weather (Gale Crater, not Jezero) |
 | MSL **Curiosity** RAD | Radiation dose rate on the surface |
+| NASA **3D Resources** | 3D models of Perseverance and Ingenuity in the 3D view |
 
 ### Direct links
 
@@ -287,6 +288,7 @@ Fine print:
 | Perseverance MEDA weather | https://mars.nasa.gov/rss/api/?feed=weather&category=mars2020&feedtype=json |
 | Curiosity REMS weather | https://mars.nasa.gov/rss/api/?feed=weather&category=msl&feedtype=json |
 | Perseverance raw images | https://mars.nasa.gov/rss/api/?feed=raw_images&category=mars2020&feedtype=json&sol=<sol> |
+| NASA 3D Resources: Mars 2020 Perseverance Rover and Ingenuity Mars Helicopter models (free to use, NASA media usage guidelines). `app/public/models` holds an earlier glTF export of the same models | https://science.nasa.gov/3d-resources/ , mirror https://github.com/nasa/NASA-3D-Resources/tree/master/3D%20Models |
 
 **Snapshots and live data.** Terrain, the rover track and weather ship as snapshots in `app/public/data`, so the calculations work offline. On start the app also asks the live mars.nasa.gov feeds (MEDA and REMS weather, rover position) and quietly stays on the snapshots if a feed is unreachable. Map tiles and raw camera images always come from the network.
 
@@ -351,7 +353,7 @@ app/                    React app
                         through commit and recomputes the route
   src/components/       Map (Leaflet), 3D (three.js), panels, briefing
   public/data/          Terrain, rover track and weather snapshots
-  public/models/        3D models of Perseverance and Ingenuity
+  public/models/        3D models of Perseverance and Ingenuity (NASA 3D Resources)
 api/                    Vercel functions: OpenAI proxy, cached NASA Trek tiles
 tiles/                  Rust cache for NASA Trek tiles
 tools/                  Data preparation (Python)
