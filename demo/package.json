@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "record": "node record.mjs"
+    "record": "node record.mjs",
+    "record:pitch": "node record-pitch.mjs"
   },
   "devDependencies": {
     "ffmpeg-static": "^5.2.0",
